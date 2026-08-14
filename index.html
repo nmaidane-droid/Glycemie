@@ -77,10 +77,10 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 .e-haut{color:var(--haut);background:rgba(232,129,26,.13)}
 .e-treshaut{color:var(--bas);background:rgba(229,72,77,.12)}
 
-.couloir{position:relative;height:34px;margin-top:16px;border-radius:8px;overflow:hidden;background:#EEF1F6}
+.couloir{position:relative;height:30px;margin-top:16px;border-radius:8px;overflow:hidden;background:#EEF1F6}
 .couloir .seg{position:absolute;top:0;bottom:0}
-.couloir .seg.cible{box-shadow:inset 1px 0 0 rgba(30,158,106,.6),inset -1px 0 0 rgba(30,158,106,.6)}
-.couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--encre);border-radius:2px;transition:left .4s cubic-bezier(.2,.8,.2,1)}
+.couloir .seg.cible{box-shadow:inset 1.5px 0 0 #fff,inset -1.5px 0 0 #fff}
+.couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:4px;background:#fff;border-radius:3px;box-shadow:0 0 0 1.5px var(--encre);transition:left .4s cubic-bezier(.2,.8,.2,1)}
 .couloir-legende{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ardoise);margin-top:5px}
 
 /* ---------- statistiques ---------- */
@@ -203,7 +203,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v1.4</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -293,7 +293,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 1.3 — 14/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 1.4 — 14/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -529,11 +529,11 @@ function rendreDerniere(){
   function pct(x){ return Math.max(0, Math.min(100, (x-min)/(max-min)*100)); }
   var co = el("div","couloir");
   var segments = [
-    { de:min,          a:r.hypo,      fond:"#F6CDCF", cls:"" },
-    { de:r.hypo,       a:r.cibleBas,  fond:"#F4E3A6", cls:"" },
-    { de:r.cibleBas,   a:r.cibleHaut, fond:"#BEE7D3", cls:" cible" },
-    { de:r.cibleHaut,  a:r.hyper,     fond:"#F9D6B4", cls:"" },
-    { de:r.hyper,      a:max,         fond:"#F6CDCF", cls:"" }
+    { de:min,          a:r.hypo,      fond:"#E5484D", cls:"" },
+    { de:r.hypo,       a:r.cibleBas,  fond:"#F2C800", cls:"" },
+    { de:r.cibleBas,   a:r.cibleHaut, fond:"#1E9E6A", cls:" cible" },
+    { de:r.cibleHaut,  a:r.hyper,     fond:"#F07C1A", cls:"" },
+    { de:r.hyper,      a:max,         fond:"#E5484D", cls:"" }
   ];
   segments.forEach(function(s){
     var largeur = pct(s.a) - pct(s.de);
