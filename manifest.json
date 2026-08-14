@@ -1,6 +1,6 @@
 {
-  "name": "Glyca — Carnet de suivi du diabète",
-  "short_name": "Glyca",
+  "name": "Glycémie — Carnet de suivi du diabète",
+  "short_name": "Glycémie",
   "description": "Carnet de suivi du diabète : glycémies, insuline, glucides, tension, poids et rapport pour le médecin.",
   "start_url": "./index.html",
   "scope": "./",
