@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glyca — Carnet de suivi du diabète</title>
+<meta name="description" content="Carnet de suivi du diabète : glycémies, insuline, glucides, tension, poids et rapport pour le médecin.">
+<meta name="theme-color" content="#F7F8FB">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Glyca">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fond:#F7F8FB;
+  --surface:#FFFFFF;
+  --encre:#171F35;
+  --ardoise:#69748F;
+  --trait:#E4E7EF;
+  --indigo:#3D3BD1;
+  --indigo-fonce:#2C2A9E;
+  --cible:#1E9E6A;
+  --bas:#E5484D;
+  --haut:#E08600;
+  --tres-haut:#C2410C;
+  --r:14px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--fond);color:var(--encre);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px;line-height:1.45;
+  padding-bottom:calc(78px + var(--safe-b));
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;font-family:"Space Grotesk","Instrument Sans",sans-serif;font-weight:700;letter-spacing:-.02em}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+
+/* ---------- en-tête ---------- */
+header{
+  position:sticky;top:0;z-index:20;background:rgba(247,248,251,.92);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--trait);
+  padding:14px 18px 12px;
+}
+.marque{display:flex;align-items:baseline;gap:9px}
+.marque h1{font-size:20px}
+.marque span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ardoise)}
+.sous{font-size:12.5px;color:var(--ardoise);margin-top:2px}
+
+main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
+.vue{display:none;animation:apparait .22s ease both}
+.vue.actif{display:block}
+@keyframes apparait{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.carte{background:var(--surface);border:1px solid var(--trait);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.titre-bloc{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ardoise);margin-bottom:10px;font-weight:600}
+
+/* ---------- signature : le couloir ---------- */
+.derniere{padding-bottom:18px}
+.valeur-ligne{display:flex;align-items:baseline;gap:8px}
+.valeur{font-family:"Space Grotesk",sans-serif;font-size:56px;font-weight:700;letter-spacing:-.04em;line-height:1}
+.unite{font-size:13px;color:var(--ardoise);letter-spacing:.02em}
+.quand{font-size:12.5px;color:var(--ardoise);margin-top:4px}
+.etat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:10px;padding:4px 10px;border-radius:999px}
+.etat i{width:7px;height:7px;border-radius:50%;background:currentColor;display:block}
+.e-bas{color:var(--bas);background:rgba(229,72,77,.1)}
+.e-cible{color:var(--cible);background:rgba(30,158,106,.1)}
+.e-haut{color:var(--haut);background:rgba(224,134,0,.12)}
+.e-treshaut{color:var(--tres-haut);background:rgba(194,65,12,.12)}
+
+.couloir{position:relative;height:34px;margin-top:16px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,rgba(229,72,77,.14),rgba(229,72,77,.14));}
+.couloir .bande{position:absolute;top:0;bottom:0;background:rgba(30,158,106,.16);border-left:1px dashed rgba(30,158,106,.55);border-right:1px dashed rgba(30,158,106,.55)}
+.couloir .haute{position:absolute;top:0;bottom:0;right:0;background:rgba(224,134,0,.13)}
+.couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--encre);border-radius:2px;transition:left .4s cubic-bezier(.2,.8,.2,1)}
+.couloir-legende{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ardoise);margin-top:5px}
+
+/* ---------- statistiques ---------- */
+.grille{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--surface);border:1px solid var(--trait);border-radius:12px;padding:12px 13px}
+.stat .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ardoise);font-weight:600}
+.stat .v{font-family:"Space Grotesk",sans-serif;font-size:25px;font-weight:700;letter-spacing:-.03em;margin-top:5px}
+.stat .n{font-size:11.5px;color:var(--ardoise)}
+
+.tir{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:12px 0 8px;background:var(--trait)}
+.tir div{height:100%}
+.tir-legende{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ardoise)}
+.tir-legende b{color:var(--encre);font-weight:600}
+.pastille{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+/* ---------- graphiques ---------- */
+.periodes{display:flex;gap:6px;margin-bottom:12px}
+.periodes button{flex:1;padding:7px 0;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--ardoise);background:var(--fond);border:1px solid var(--trait)}
+.periodes button.actif{background:var(--encre);color:#fff;border-color:var(--encre)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.vide{color:var(--ardoise);font-size:13.5px;text-align:center;padding:22px 8px}
+
+/* ---------- journal ---------- */
+.jour{margin-bottom:16px}
+.jour h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ardoise);margin-bottom:8px}
+.ligne{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--trait);border-radius:12px;padding:11px 13px;margin-bottom:8px;width:100%;text-align:left}
+.ligne .h{font-size:12.5px;color:var(--ardoise);min-width:42px}
+.ligne .g{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:19px;min-width:56px}
+.ligne .d{flex:1;min-width:0}
+.ligne .d b{display:block;font-size:13px;font-weight:600}
+.ligne .d small{color:var(--ardoise);font-size:11.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.puce{width:4px;align-self:stretch;border-radius:3px;background:var(--trait)}
+
+/* ---------- formulaires ---------- */
+label{display:block;font-size:12px;font-weight:600;color:var(--ardoise);margin:0 0 5px}
+input,select,textarea{
+  width:100%;padding:11px 12px;border:1px solid var(--trait);border-radius:11px;background:var(--surface);
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--indigo);outline-offset:1px;border-color:transparent}
+.champ{margin-bottom:12px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.puces{display:flex;flex-wrap:wrap;gap:7px}
+.puces button{padding:8px 12px;border-radius:999px;border:1px solid var(--trait);background:var(--surface);font-size:13px;font-weight:500}
+.puces button.actif{background:var(--indigo);border-color:var(--indigo);color:#fff}
+.gros{width:100%;padding:14px;border-radius:12px;background:var(--indigo);color:#fff;font-weight:600;font-size:15px}
+.gros.secondaire{background:var(--surface);color:var(--encre);border:1px solid var(--trait)}
+.gros.danger{background:var(--surface);color:var(--bas);border:1px solid rgba(229,72,77,.4)}
+.gros+.gros{margin-top:9px}
+.aide{font-size:12px;color:var(--ardoise);margin-top:6px}
+
+/* ---------- feuille de saisie ---------- */
+.voile{position:fixed;inset:0;background:rgba(23,31,53,.45);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
+.voile.ouvert{opacity:1;pointer-events:auto}
+.feuille{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--fond);
+  border-radius:22px 22px 0 0;max-height:92vh;overflow-y:auto;
+  padding:8px 18px calc(26px + var(--safe-b));
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);
+  max-width:640px;margin:0 auto;
+}
+.feuille.ouvert{transform:none}
+.poignee{width:38px;height:4px;background:var(--trait);border-radius:3px;margin:8px auto 14px}
+.onglets{display:flex;gap:6px;margin-bottom:16px}
+.onglets button{flex:1;padding:9px 0;border-radius:10px;font-size:13px;font-weight:600;color:var(--ardoise);background:var(--surface);border:1px solid var(--trait)}
+.onglets button.actif{background:var(--encre);color:#fff;border-color:var(--encre)}
+
+/* ---------- navigation ---------- */
+nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.94);
+  backdrop-filter:blur(12px);border-top:1px solid var(--trait);
+  display:flex;padding:6px 4px calc(6px + var(--safe-b));max-width:640px;margin:0 auto;
+}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;font-size:10.5px;font-weight:600;color:var(--ardoise)}
+nav button.actif{color:var(--indigo)}
+nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fab{
+  position:fixed;right:18px;bottom:calc(88px + var(--safe-b));z-index:31;
+  width:56px;height:56px;border-radius:19px;background:var(--indigo);color:#fff;
+  font-size:28px;line-height:0;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 22px rgba(61,59,209,.34);
+}
+.fab:active{transform:scale(.94)}
+
+.avis{font-size:12px;color:var(--ardoise);border-left:2px solid var(--trait);padding-left:11px;margin-top:6px}
+.toast{
+  position:fixed;left:50%;bottom:calc(150px + var(--safe-b));transform:translate(-50%,10px);
+  background:var(--encre);color:#fff;padding:10px 16px;border-radius:11px;font-size:13.5px;z-index:60;
+  opacity:0;pointer-events:none;transition:.22s;max-width:88%;text-align:center;
+}
+.toast.vu{opacity:1;transform:translate(-50%,0)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--trait)}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardoise)}
+
+/* ---------- molette de saisie ---------- */
+.molette{position:relative;height:184px;overflow:hidden;border:1px solid var(--trait);border-radius:14px;background:var(--surface)}
+.piste{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch}
+.piste::-webkit-scrollbar{display:none}
+.piste .cran{height:46px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;
+  font-family:"Space Grotesk",sans-serif;font-size:19px;font-weight:500;color:var(--ardoise);opacity:.55}
+.piste .cran.proche{opacity:.85;font-size:21px}
+.piste .cran.sel{opacity:1;font-size:32px;font-weight:700;letter-spacing:-.03em;color:var(--encre)}
+.piste .vide-haut,.piste .vide-bas{height:69px;scroll-snap-align:none}
+.fenetre{position:absolute;left:10px;right:10px;top:calc(50% - 24px);height:48px;border-radius:10px;
+  border-top:1px solid rgba(61,59,209,.55);border-bottom:1px solid rgba(61,59,209,.55);background:rgba(61,59,209,.05);pointer-events:none}
+.fenetre b{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11.5px;font-weight:600;color:var(--ardoise)}
+.sous-molette{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.sous-molette .etiq{font-size:12.5px;color:var(--ardoise)}
+.lien{font-size:13px;font-weight:600;color:var(--indigo);padding:4px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  header,nav,.fab,.non-imprimable,.voile,.feuille{display:none!important}
+  body{background:#fff;padding:0}
+  .carte{break-inside:avoid;border-color:#ccc}
+  main{max-width:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marque"><h1>Glyca</h1><span>carnet de suivi</span></div>
+  <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
+</header>
+
+<main>
+  <!-- ================= SUIVI ================= -->
+  <section class="vue actif" id="v-suivi">
+    <div class="carte derniere" id="bloc-derniere"></div>
+
+    <div class="grille" id="bloc-stats"></div>
+
+    <div class="carte" style="margin-top:14px">
+      <div class="titre-bloc">Temps dans la cible</div>
+      <div class="tir" id="tir-barre"></div>
+      <div class="tir-legende" id="tir-legende"></div>
+      <div class="avis" id="tir-note"></div>
+    </div>
+
+    <div class="carte">
+      <div class="titre-bloc">Courbe des glycémies</div>
+      <div class="periodes" id="periodes"></div>
+      <div id="graphe"></div>
+    </div>
+
+    <div class="carte">
+      <div class="titre-bloc">Profil de la journée</div>
+      <div id="profil"></div>
+      <div class="avis">Moyenne par moment de la journée sur la période choisie. Utile pour repérer l'heure où la glycémie décroche.</div>
+    </div>
+  </section>
+
+  <!-- ================= JOURNAL ================= -->
+  <section class="vue" id="v-journal">
+    <div class="carte">
+      <div class="titre-bloc">Filtrer</div>
+      <div class="puces" id="filtres"></div>
+    </div>
+    <div id="liste-journal"></div>
+  </section>
+
+  <!-- ================= RAPPORT ================= -->
+  <section class="vue" id="v-rapport">
+    <div class="carte non-imprimable">
+      <div class="titre-bloc">Rapport pour le médecin</div>
+      <div class="duo">
+        <div class="champ"><label for="rap-debut">Du</label><input type="date" id="rap-debut"></div>
+        <div class="champ"><label for="rap-fin">Au</label><input type="date" id="rap-fin"></div>
+      </div>
+      <button class="gros" id="btn-rapport">Générer le rapport</button>
+      <button class="gros secondaire" id="btn-imprimer">Imprimer / enregistrer en PDF</button>
+      <div class="aide">Le rapport reprend les statistiques de la période et le détail des mesures, dans une mise en page prête à imprimer.</div>
+    </div>
+    <div id="rapport"></div>
+  </section>
+
+  <!-- ================= RÉGLAGES ================= -->
+  <section class="vue" id="v-reglages">
+    <div class="carte">
+      <div class="titre-bloc">Identité du carnet</div>
+      <div class="champ"><label for="s-nom">Nom affiché sur le rapport</label><input id="s-nom" placeholder="Prénom Nom"></div>
+      <div class="champ"><label for="s-unite">Unité de mesure</label>
+        <select id="s-unite"><option value="mg">mg/dL</option><option value="mmol">mmol/L</option></select>
+      </div>
+    </div>
+
+    <div class="carte">
+      <div class="titre-bloc">Objectifs glycémiques</div>
+      <div class="duo">
+        <div class="champ"><label for="s-cible-bas">Cible basse</label><input type="number" step="any" id="s-cible-bas"></div>
+        <div class="champ"><label for="s-cible-haut">Cible haute</label><input type="number" step="any" id="s-cible-haut"></div>
+      </div>
+      <div class="duo">
+        <div class="champ"><label for="s-hypo">Seuil d'hypoglycémie</label><input type="number" step="any" id="s-hypo"></div>
+        <div class="champ"><label for="s-hyper">Seuil d'alerte haute</label><input type="number" step="any" id="s-hyper"></div>
+      </div>
+      <button class="gros" id="btn-reglages">Enregistrer les réglages</button>
+      <div class="avis">Ces valeurs viennent de votre médecin. Elles ne servent qu'à colorer et classer vos mesures — l'application ne calcule aucune dose.</div>
+    </div>
+
+    <div class="carte">
+      <div class="titre-bloc">Vos données</div>
+      <button class="gros secondaire" id="btn-csv">Exporter en CSV (tableur)</button>
+      <button class="gros secondaire" id="btn-json">Exporter une sauvegarde (JSON)</button>
+      <button class="gros secondaire" id="btn-import">Restaurer une sauvegarde</button>
+      <input type="file" id="fichier-import" accept=".json,application/json" hidden>
+      <button class="gros danger" id="btn-vider">Effacer toutes les mesures</button>
+      <div class="aide">Tout reste sur cet appareil. Rien n'est envoyé sur un serveur.</div>
+    </div>
+
+    <div class="carte">
+      <div class="titre-bloc">À propos</div>
+      <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
+        Glyca est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
+        et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
+        avec cétones, appliquez le protocole donné par votre équipe soignante et contactez-la.
+      </p>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" aria-label="Ajouter une mesure">+</button>
+
+<nav>
+  <button data-vue="suivi" class="actif"><svg viewBox="0 0 24 24"><path d="M3 14h4l2.5-7 3.5 13 3-9 2 3h3"/></svg>Suivi</button>
+  <button data-vue="journal"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h5"/></svg>Journal</button>
+  <button data-vue="rapport"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Rapport</button>
+  <button data-vue="reglages"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg>Réglages</button>
+</nav>
+
+<div class="voile" id="voile"></div>
+<div class="feuille" id="feuille">
+  <div class="poignee"></div>
+  <div class="onglets">
+    <button data-onglet="glycemie" class="actif">Glycémie</button>
+    <button data-onglet="mesures">Poids &amp; tension</button>
+    <button data-onglet="activite">Activité</button>
+  </div>
+
+  <form id="f-glycemie">
+    <div class="champ">
+      <label for="g-valeur">Glycémie <span id="g-unite">(mg/dL)</span></label>
+      <div class="molette" id="molette">
+        <div class="piste" id="piste"></div>
+        <div class="fenetre"><b id="fen-unite">mg/dL</b></div>
+      </div>
+      <div class="sous-molette">
+        <span class="etiq" id="molette-etat">Faites défiler pour ajuster</span>
+        <button type="button" class="lien" id="bascule-saisie">Saisir au clavier</button>
+      </div>
+      <input type="number" step="any" inputmode="decimal" id="g-valeur" hidden>
+    </div>
+    <div class="champ">
+      <label>Contexte</label>
+      <div class="puces" id="g-contextes"></div>
+    </div>
+    <div class="champ"><label for="g-date">Date et heure</label><input type="datetime-local" id="g-date"></div>
+    <div class="duo">
+      <div class="champ"><label for="g-rapide">Insuline rapide (U)</label><input type="number" step="any" inputmode="decimal" id="g-rapide" placeholder="0"></div>
+      <div class="champ"><label for="g-lente">Insuline lente (U)</label><input type="number" step="any" inputmode="decimal" id="g-lente" placeholder="0"></div>
+    </div>
+    <div class="duo">
+      <div class="champ"><label for="g-glucides">Glucides du repas (g)</label><input type="number" step="any" inputmode="decimal" id="g-glucides" placeholder="0"></div>
+      <div class="champ"><label for="g-medic">Autre traitement pris</label><input id="g-medic" placeholder="Ex. metformine"></div>
+    </div>
+    <div class="champ"><label for="g-note">Note</label><input id="g-note" placeholder="Ex. repas tardif, stress, sport…"></div>
+    <button type="submit" class="gros">Enregistrer la mesure</button>
+    <button type="button" class="gros danger" id="g-supprimer" hidden>Supprimer cette mesure</button>
+  </form>
+
+  <form id="f-mesures" hidden>
+    <div class="duo">
+      <div class="champ"><label for="m-poids">Poids (kg)</label><input type="number" step="any" inputmode="decimal" id="m-poids" placeholder="Ex. 78,5"></div>
+      <div class="champ"><label for="m-pouls">Pouls (bpm)</label><input type="number" inputmode="numeric" id="m-pouls" placeholder="Ex. 72"></div>
+    </div>
+    <div class="duo">
+      <div class="champ"><label for="m-sys">Tension systolique</label><input type="number" inputmode="numeric" id="m-sys" placeholder="Ex. 128"></div>
+      <div class="champ"><label for="m-dia">Tension diastolique</label><input type="number" inputmode="numeric" id="m-dia" placeholder="Ex. 80"></div>
+    </div>
+    <div class="champ"><label for="m-date">Date et heure</label><input type="datetime-local" id="m-date"></div>
+    <button type="submit" class="gros">Enregistrer</button>
+  </form>
+
+  <form id="f-activite" hidden>
+    <div class="champ"><label for="a-type">Type d'activité</label><input id="a-type" placeholder="Ex. marche, vélo, natation"></div>
+    <div class="duo">
+      <div class="champ"><label for="a-duree">Durée (min)</label><input type="number" inputmode="numeric" id="a-duree" placeholder="Ex. 30"></div>
+      <div class="champ"><label for="a-intensite">Intensité</label>
+        <select id="a-intensite"><option>Légère</option><option>Modérée</option><option>Soutenue</option></select>
+      </div>
+    </div>
+    <div class="champ"><label for="a-date">Date et heure</label><input type="datetime-local" id="a-date"></div>
+    <button type="submit" class="gros">Enregistrer</button>
+  </form>
+</div>
+
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ stockage (aperçu Claude ou appareil) ============ */
+var CLE = "glyca.v1";
+var Store = {
+  load: function(){
+    return new Promise(function(res){
+      if (window.storage && window.storage.get) {
+        window.storage.get(CLE, false).then(function(r){
+          res(r && r.value ? JSON.parse(r.value) : local());
+        }).catch(function(){ res(local()); });
+      } else { res(local()); }
+      function local(){
+        try { var s = localStorage.getItem(CLE); return s ? JSON.parse(s) : null; }
+        catch(e){ return null; }
+      }
+    });
+  },
+  save: function(d){
+    var v = JSON.stringify(d);
+    try { localStorage.setItem(CLE, v); } catch(e){}
+    if (window.storage && window.storage.set) {
+      try { window.storage.set(CLE, v, false).catch(function(){}); } catch(e){}
+    }
+  }
+};
+
+/* ============ état ============ */
+var etat = {
+  reglages: { nom:"", unite:"mg", cibleBas:80, cibleHaut:180, hypo:70, hyper:250 },
+  mesures: [],   // glycémies
+  vitaux: [],    // poids / tension
+  activites: []
+};
+var periode = 14;
+var filtre = "tous";
+var editionId = null;
+var contexteChoisi = "Avant repas";
+
+var CONTEXTES = ["À jeun","Avant repas","2 h après repas","Avant sport","Après sport","Au coucher","Nuit","Malaise","Autre"];
+
+/* ============ utilitaires ============ */
+function $(s){ return document.querySelector(s); }
+function el(t,c,x){ var e=document.createElement(t); if(c)e.className=c; if(x!=null)e.textContent=x; return e; }
+function id(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function estMmol(){ return etat.reglages.unite === "mmol"; }
+function versAff(mg){ return estMmol() ? Math.round(mg/18.0182*10)/10 : Math.round(mg); }
+function versMg(v){ return estMmol() ? v*18.0182 : v; }
+function affiche(mg){ var v = versAff(mg); return estMmol() ? v.toFixed(1).replace(".",",") : String(v); }
+function unite(){ return estMmol() ? "mmol/L" : "mg/dL"; }
+function num(v){ var n = parseFloat(String(v).replace(",",".")); return isNaN(n) ? null : n; }
+
+function classe(mg){
+  var r = etat.reglages;
+  if (mg < r.hypo) return "bas";
+  if (mg < r.cibleBas) return "bas";
+  if (mg <= r.cibleHaut) return "cible";
+  if (mg < r.hyper) return "haut";
+  return "treshaut";
+}
+var LIBELLE = { bas:"Sous la cible", cible:"Dans la cible", haut:"Au-dessus de la cible", treshaut:"Très au-dessus" };
+var COULEUR = { bas:"#E5484D", cible:"#1E9E6A", haut:"#E08600", treshaut:"#C2410C" };
+
+function pourLocal(d){
+  var t = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+  return t.toISOString().slice(0,16);
+}
+function heure(ts){
+  var d = new Date(ts);
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+function jourLong(ts){
+  return new Date(ts).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+}
+function jourCourt(ts){ return new Date(ts).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}); }
+function depuis(ts){
+  var m = Math.round((Date.now()-ts)/60000);
+  if (m < 1) return "à l'instant";
+  if (m < 60) return "il y a " + m + " min";
+  var h = Math.round(m/60);
+  if (h < 24) return "il y a " + h + " h";
+  var j = Math.round(h/24);
+  return "il y a " + j + " j";
+}
+function toast(msg){
+  var t = $("#toast"); t.textContent = msg; t.classList.add("vu");
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove("vu"); }, 2600);
+}
+function surPeriode(jours){
+  var lim = Date.now() - jours*86400000;
+  return etat.mesures.filter(function(m){ return m.ts >= lim; }).sort(function(a,b){ return a.ts-b.ts; });
+}
+
+/* ============ vues ============ */
+function ouvrirVue(nom){
+  document.querySelectorAll(".vue").forEach(function(v){ v.classList.remove("actif"); });
+  $("#v-"+nom).classList.add("actif");
+  document.querySelectorAll("nav button").forEach(function(b){ b.classList.toggle("actif", b.dataset.vue===nom); });
+  window.scrollTo(0,0);
+  if (nom === "journal") rendreJournal();
+}
+document.querySelectorAll("nav button").forEach(function(b){
+  b.addEventListener("click", function(){ ouvrirVue(b.dataset.vue); });
+});
+
+/* ============ tableau de bord ============ */
+function rendreSuivi(){
+  rendreDerniere();
+  rendreStats();
+  rendreTIR();
+  rendrePeriodes();
+  rendreGraphe();
+  rendreProfil();
+}
+
+function rendreDerniere(){
+  var b = $("#bloc-derniere"); b.innerHTML = "";
+  var tri = etat.mesures.slice().sort(function(a,x){ return x.ts-a.ts; });
+  if (!tri.length){
+    b.appendChild(el("div","titre-bloc","Dernière glycémie"));
+    var v = el("div","vide","Aucune mesure pour l'instant. Touchez + pour enregistrer votre première glycémie.");
+    b.appendChild(v);
+    return;
+  }
+  var d = tri[0], c = classe(d.mg), r = etat.reglages;
+  b.appendChild(el("div","titre-bloc","Dernière glycémie"));
+  var ligne = el("div","valeur-ligne");
+  var val = el("div","valeur", affiche(d.mg)); val.style.color = COULEUR[c];
+  ligne.appendChild(val); ligne.appendChild(el("div","unite", unite()));
+  b.appendChild(ligne);
+  b.appendChild(el("div","quand", d.contexte + " · " + heure(d.ts) + " · " + depuis(d.ts)));
+  var et = el("div","etat e-"+c); et.appendChild(el("i")); et.appendChild(document.createTextNode(LIBELLE[c]));
+  b.appendChild(et);
+
+  // le couloir
+  var min = Math.min(r.hypo*0.6, 40), max = Math.max(r.hyper*1.15, r.cibleHaut*1.6);
+  function pct(x){ return Math.max(0, Math.min(100, (x-min)/(max-min)*100)); }
+  var co = el("div","couloir");
+  var bande = el("div","bande");
+  bande.style.left = pct(r.cibleBas)+"%"; bande.style.width = (pct(r.cibleHaut)-pct(r.cibleBas))+"%";
+  var hausse = el("div","haute"); hausse.style.left = pct(r.hyper)+"%"; hausse.style.right = "0";
+  var cur = el("div","curseur"); cur.style.left = pct(d.mg)+"%";
+  co.appendChild(bande); co.appendChild(hausse); co.appendChild(cur);
+  b.appendChild(co);
+  var lg = el("div","couloir-legende");
+  lg.appendChild(el("span",null, affiche(r.hypo)+" hypo"));
+  lg.appendChild(el("span",null, "cible "+affiche(r.cibleBas)+"–"+affiche(r.cibleHaut)));
+  lg.appendChild(el("span",null, affiche(r.hyper)+" alerte"));
+  b.appendChild(lg);
+
+  if (c === "bas"){
+    b.appendChild(el("div","avis","Mesure sous votre seuil. Appliquez le protocole de resucrage convenu avec votre médecin, puis recontrôlez."));
+  } else if (c === "treshaut"){
+    b.appendChild(el("div","avis","Mesure très élevée. Suivez la conduite à tenir donnée par votre équipe soignante (contrôle des cétones si prescrit) et contactez-la si cela se répète."));
+  }
+}
+
+function moyenne(liste){
+  if (!liste.length) return null;
+  var s = 0; liste.forEach(function(m){ s += m.mg; });
+  return s/liste.length;
+}
+
+function rendreStats(){
+  var g = $("#bloc-stats"); g.innerHTML = "";
+  var l7 = surPeriode(7), l14 = surPeriode(14), l30 = surPeriode(30);
+  var moy7 = moyenne(l7), moy30 = moyenne(l30);
+
+  function stat(k, v, n){
+    var s = el("div","stat");
+    s.appendChild(el("div","k",k));
+    s.appendChild(el("div","v",v));
+    if (n) s.appendChild(el("div","n",n));
+    g.appendChild(s);
+  }
+  stat("Moyenne 7 j", moy7 ? affiche(moy7) : "—", moy7 ? unite()+" · "+l7.length+" mesures" : "pas de mesure");
+  stat("HbA1c estimée", moy30 ? (3.31 + 0.02392*moy30).toFixed(1).replace(".",",")+" %" : "—",
+       moy30 ? "indicateur GMI sur 30 j" : "30 j de données requises");
+  var hypos = l14.filter(function(m){ return m.mg < etat.reglages.hypo; }).length;
+  stat("Hypoglycémies", String(hypos), "sur 14 jours");
+  var ajd = etat.mesures.filter(function(m){ return new Date(m.ts).toDateString() === new Date().toDateString(); });
+  var uni = 0, gluc = 0;
+  ajd.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); gluc += (m.glucides||0); });
+  stat("Insuline aujourd'hui", uni ? (Math.round(uni*10)/10).toString().replace(".",",")+" U" : "—",
+       gluc ? Math.round(gluc)+" g de glucides notés" : ajd.length+" mesure(s) aujourd'hui");
+}
+
+function rendreTIR(){
+  var l = surPeriode(periode);
+  var barre = $("#tir-barre"), leg = $("#tir-legende");
+  barre.innerHTML = ""; leg.innerHTML = "";
+  if (!l.length){
+    $("#tir-note").textContent = "Enregistrez des mesures pour voir la répartition.";
+    var d = el("div"); d.style.width="100%"; d.style.background="var(--trait)"; barre.appendChild(d);
+    return;
+  }
+  var cpt = { bas:0, cible:0, haut:0, treshaut:0 };
+  l.forEach(function(m){ cpt[classe(m.mg)]++; });
+  ["bas","cible","haut","treshaut"].forEach(function(k){
+    var p = cpt[k]/l.length*100;
+    if (p > 0){ var d = el("div"); d.style.width = p+"%"; d.style.background = COULEUR[k]; barre.appendChild(d); }
+    var s = el("span");
+    var pt = el("i","pastille"); pt.style.background = COULEUR[k];
+    s.appendChild(pt);
+    s.appendChild(el("b",null, Math.round(p)+"%"));
+    s.appendChild(document.createTextNode(" " + LIBELLE[k].toLowerCase()));
+    leg.appendChild(s);
+  });
+  var enCible = Math.round(cpt.cible/l.length*100);
+  $("#tir-note").textContent = "Sur " + l.length + " mesures des " + periode + " derniers jours : " + enCible +
+    " % dans votre cible. L'objectif est fixé avec votre médecin (souvent au moins 70 %).";
+}
+
+function rendrePeriodes(){
+  var c = $("#periodes"); c.innerHTML = "";
+  [7,14,30,90].forEach(function(p){
+    var b = el("button", p===periode ? "actif" : null, p + " j");
+    b.addEventListener("click", function(){ periode = p; rendreTIR(); rendrePeriodes(); rendreGraphe(); rendreProfil(); });
+    c.appendChild(b);
+  });
+}
+
+/* ============ graphique ============ */
+function rendreGraphe(){
+  var c = $("#graphe"); c.innerHTML = "";
+  var l = surPeriode(periode);
+  if (l.length < 2){ c.appendChild(el("div","vide","Au moins deux mesures sont nécessaires pour tracer la courbe.")); return; }
+
+  var W = 340, H = 190, mg = 30, mb = 22, ml = 30, mr = 6;
+  var r = etat.reglages;
+  var vals = l.map(function(m){ return m.mg; });
+  var vmin = Math.min.apply(null, vals.concat([r.cibleBas])) * 0.85;
+  var vmax = Math.max.apply(null, vals.concat([r.cibleHaut])) * 1.12;
+  var t0 = l[0].ts, t1 = l[l.length-1].ts; if (t1 === t0) t1 = t0 + 1;
+
+  function X(t){ return ml + (t-t0)/(t1-t0) * (W-ml-mr); }
+  function Y(v){ return mg + (1-(v-vmin)/(vmax-vmin)) * (H-mg-mb); }
+
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Courbe des glycémies">';
+  s += '<rect x="'+ml+'" y="'+Y(r.cibleHaut)+'" width="'+(W-ml-mr)+'" height="'+(Y(r.cibleBas)-Y(r.cibleHaut))+'" fill="rgba(30,158,106,.13)"/>';
+  s += '<line x1="'+ml+'" y1="'+Y(r.cibleHaut)+'" x2="'+(W-mr)+'" y2="'+Y(r.cibleHaut)+'" stroke="rgba(30,158,106,.6)" stroke-dasharray="3 3"/>';
+  s += '<line x1="'+ml+'" y1="'+Y(r.cibleBas)+'" x2="'+(W-mr)+'" y2="'+Y(r.cibleBas)+'" stroke="rgba(30,158,106,.6)" stroke-dasharray="3 3"/>';
+  s += '<line x1="'+ml+'" y1="'+Y(r.hypo)+'" x2="'+(W-mr)+'" y2="'+Y(r.hypo)+'" stroke="rgba(229,72,77,.5)" stroke-dasharray="2 4"/>';
+  [r.cibleBas, r.cibleHaut].forEach(function(v){
+    s += '<text x="2" y="'+(Y(v)+3)+'" font-size="9" fill="#69748F" font-family="IBM Plex Mono,monospace">'+affiche(v)+'</text>';
+  });
+  var pts = l.map(function(m){ return X(m.ts).toFixed(1)+","+Y(m.mg).toFixed(1); }).join(" ");
+  s += '<polyline points="'+pts+'" fill="none" stroke="#3D3BD1" stroke-width="1.4" stroke-opacity=".45" stroke-linejoin="round"/>';
+  l.forEach(function(m){
+    s += '<circle cx="'+X(m.ts).toFixed(1)+'" cy="'+Y(m.mg).toFixed(1)+'" r="3.2" fill="'+COULEUR[classe(m.mg)]+'"><title>'+affiche(m.mg)+" "+unite()+" — "+jourCourt(m.ts)+" "+heure(m.ts)+'</title></circle>';
+  });
+  s += '<text x="'+ml+'" y="'+(H-6)+'" font-size="9" fill="#69748F" font-family="IBM Plex Mono,monospace">'+jourCourt(t0)+'</text>';
+  s += '<text x="'+(W-mr)+'" y="'+(H-6)+'" font-size="9" fill="#69748F" text-anchor="end" font-family="IBM Plex Mono,monospace">'+jourCourt(t1)+'</text>';
+  s += '</svg>';
+  c.innerHTML = s;
+}
+
+var TRANCHES = [
+  { n:"Nuit", a:0, b:6 }, { n:"Matin", a:6, b:10 }, { n:"Midi", a:10, b:14 },
+  { n:"Après-midi", a:14, b:18 }, { n:"Soir", a:18, b:22 }, { n:"Coucher", a:22, b:24 }
+];
+function rendreProfil(){
+  var c = $("#profil"); c.innerHTML = "";
+  var l = surPeriode(periode);
+  if (!l.length){ c.appendChild(el("div","vide","Pas encore de données sur cette période.")); return; }
+  var stats = TRANCHES.map(function(t){
+    var s = l.filter(function(m){ var h = new Date(m.ts).getHours(); return h >= t.a && h < t.b; });
+    return { n:t.n, moy: s.length ? moyenne(s) : null, n2: s.length };
+  });
+  var maxi = Math.max.apply(null, stats.map(function(s){ return s.moy || 0 ; }).concat([etat.reglages.cibleHaut]));
+  stats.forEach(function(s){
+    var l1 = el("div"); l1.style.display="flex"; l1.style.alignItems="center"; l1.style.gap="9px"; l1.style.margin="7px 0";
+    var lab = el("div", null, s.n); lab.style.fontSize="12px"; lab.style.width="76px"; lab.style.color="var(--ardoise)";
+    var piste = el("div"); piste.style.flex="1"; piste.style.height="9px"; piste.style.background="var(--trait)"; piste.style.borderRadius="5px"; piste.style.overflow="hidden";
+    var barre = el("div"); barre.style.height="100%";
+    barre.style.width = s.moy ? (s.moy/maxi*100)+"%" : "0";
+    barre.style.background = s.moy ? COULEUR[classe(s.moy)] : "transparent";
+    piste.appendChild(barre);
+    var v = el("div","mono", s.moy ? affiche(s.moy) : "—");
+    v.style.fontSize="12px"; v.style.width="46px"; v.style.textAlign="right";
+    l1.appendChild(lab); l1.appendChild(piste); l1.appendChild(v);
+    c.appendChild(l1);
+  });
+}
+
+/* ============ journal ============ */
+function rendreFiltres(){
+  var c = $("#filtres"); c.innerHTML = "";
+  ["tous"].concat(CONTEXTES).forEach(function(f){
+    var b = el("button", f===filtre ? "actif" : null, f === "tous" ? "Tout" : f);
+    b.addEventListener("click", function(){ filtre = f; rendreFiltres(); rendreJournal(); });
+    c.appendChild(b);
+  });
+}
+
+function rendreJournal(){
+  rendreFiltres();
+  var c = $("#liste-journal"); c.innerHTML = "";
+  var items = [];
+  etat.mesures.forEach(function(m){ items.push({ t:"g", ts:m.ts, o:m }); });
+  etat.vitaux.forEach(function(v){ items.push({ t:"v", ts:v.ts, o:v }); });
+  etat.activites.forEach(function(a){ items.push({ t:"a", ts:a.ts, o:a }); });
+  if (filtre !== "tous") items = items.filter(function(i){ return i.t === "g" && i.o.contexte === filtre; });
+  items.sort(function(a,b){ return b.ts - a.ts; });
+
+  if (!items.length){ c.appendChild(el("div","vide","Rien à afficher pour ce filtre.")); return; }
+
+  var courant = null, bloc = null;
+  items.forEach(function(i){
+    var j = new Date(i.ts).toDateString();
+    if (j !== courant){
+      courant = j;
+      bloc = el("div","jour");
+      bloc.appendChild(el("h3", null, jourLong(i.ts)));
+      c.appendChild(bloc);
+    }
+    bloc.appendChild(ligneJournal(i));
+  });
+}
+
+function ligneJournal(i){
+  var b = document.createElement("button");
+  b.className = "ligne";
+  var p = el("div","puce");
+  b.appendChild(p);
+  b.appendChild(el("div","h", heure(i.ts)));
+  if (i.t === "g"){
+    var m = i.o, c = classe(m.mg);
+    p.style.background = COULEUR[c];
+    var g = el("div","g", affiche(m.mg)); g.style.color = COULEUR[c];
+    b.appendChild(g);
+    var d = el("div","d");
+    d.appendChild(el("b", null, m.contexte));
+    var bits = [];
+    if (m.rapide) bits.push(m.rapide + " U rapide");
+    if (m.lente) bits.push(m.lente + " U lente");
+    if (m.glucides) bits.push(m.glucides + " g glucides");
+    if (m.medic) bits.push(m.medic);
+    if (m.note) bits.push(m.note);
+    d.appendChild(el("small", null, bits.join(" · ") || unite()));
+    b.appendChild(d);
+    b.addEventListener("click", function(){ ouvrirFeuille("glycemie", m); });
+  } else if (i.t === "v"){
+    p.style.background = "#3D3BD1";
+    var d2 = el("div","d");
+    d2.appendChild(el("b", null, "Poids & tension"));
+    var t = [];
+    if (i.o.poids) t.push(i.o.poids + " kg");
+    if (i.o.sys && i.o.dia) t.push(i.o.sys + "/" + i.o.dia + " mmHg");
+    if (i.o.pouls) t.push(i.o.pouls + " bpm");
+    d2.appendChild(el("small", null, t.join(" · ")));
+    b.appendChild(d2);
+    b.addEventListener("click", function(){ if (confirm("Supprimer cette mesure ?")) { retirer("vitaux", i.o.id); } });
+  } else {
+    p.style.background = "#69748F";
+    var d3 = el("div","d");
+    d3.appendChild(el("b", null, i.o.type || "Activité"));
+    d3.appendChild(el("small", null, (i.o.duree ? i.o.duree + " min · " : "") + (i.o.intensite || "")));
+    b.appendChild(d3);
+    b.addEventListener("click", function(){ if (confirm("Supprimer cette activité ?")) { retirer("activites", i.o.id); } });
+  }
+  return b;
+}
+
+function retirer(collection, ident){
+  etat[collection] = etat[collection].filter(function(x){ return x.id !== ident; });
+  sauver(); rendreJournal(); rendreSuivi(); toast("Entrée supprimée");
+}
+
+/* ============ feuille de saisie ============ */
+function rendreContextes(){
+  var c = $("#g-contextes"); c.innerHTML = "";
+  CONTEXTES.forEach(function(x){
+    var b = el("button", x===contexteChoisi ? "actif" : null, x);
+    b.type = "button";
+    b.addEventListener("click", function(){ contexteChoisi = x; rendreContextes(); });
+    c.appendChild(b);
+  });
+}
+
+function ouvrirFeuille(onglet, mesure){
+  onglet = onglet || "glycemie";
+  editionId = null;
+  choisirOnglet(onglet);
+  var maintenant = pourLocal(new Date());
+  $("#g-date").value = maintenant; $("#m-date").value = maintenant; $("#a-date").value = maintenant;
+  $("#g-unite").textContent = "(" + unite() + ")";
+  if (mesure){
+    editionId = mesure.id;
+    $("#g-valeur").value = versAff(mesure.mg);
+    poserMolette(versAff(mesure.mg));
+    contexteChoisi = mesure.contexte;
+    $("#g-date").value = pourLocal(new Date(mesure.ts));
+    $("#g-rapide").value = mesure.rapide || "";
+    $("#g-lente").value = mesure.lente || "";
+    $("#g-glucides").value = mesure.glucides || "";
+    $("#g-medic").value = mesure.medic || "";
+    $("#g-note").value = mesure.note || "";
+    $("#g-supprimer").hidden = false;
+  } else {
+    $("#f-glycemie").reset();
+    $("#g-supprimer").hidden = true;
+    $("#g-date").value = maintenant;
+    poserMolette(null);
+  }
+  rendreContextes();
+  $("#voile").classList.add("ouvert");
+  $("#feuille").classList.add("ouvert");
+}
+function fermerFeuille(){
+  $("#voile").classList.remove("ouvert");
+  $("#feuille").classList.remove("ouvert");
+  editionId = null;
+}
+function choisirOnglet(nom){
+  document.querySelectorAll(".onglets button").forEach(function(b){ b.classList.toggle("actif", b.dataset.onglet===nom); });
+  $("#f-glycemie").hidden = nom !== "glycemie";
+  $("#f-mesures").hidden = nom !== "mesures";
+  $("#f-activite").hidden = nom !== "activite";
+}
+document.querySelectorAll(".onglets button").forEach(function(b){
+  b.addEventListener("click", function(){ choisirOnglet(b.dataset.onglet); });
+});
+$("#fab").addEventListener("click", function(){ ouvrirFeuille("glycemie", null); });
+$("#voile").addEventListener("click", fermerFeuille);
+
+$("#f-glycemie").addEventListener("submit", function(e){
+  e.preventDefault();
+  var v = num($("#g-valeur").value);
+  if (v === null || v <= 0){ toast("Entrez une glycémie valide."); return; }
+  var mg = versMg(v);
+  if (mg < 10 || mg > 900){ toast("Valeur hors des limites plausibles. Vérifiez l'unité."); return; }
+  var obj = {
+    id: editionId || id(),
+    ts: $("#g-date").value ? new Date($("#g-date").value).getTime() : Date.now(),
+    mg: mg,
+    contexte: contexteChoisi,
+    rapide: num($("#g-rapide").value) || 0,
+    lente: num($("#g-lente").value) || 0,
+    glucides: num($("#g-glucides").value) || 0,
+    medic: $("#g-medic").value.trim(),
+    note: $("#g-note").value.trim()
+  };
+  if (editionId) etat.mesures = etat.mesures.filter(function(m){ return m.id !== editionId; });
+  etat.mesures.push(obj);
+  sauver(); fermerFeuille(); rendreSuivi(); rendreJournal();
+  var c = classe(mg);
+  toast(editionId ? "Mesure modifiée" : "Enregistré — " + LIBELLE[c].toLowerCase());
+});
+
+$("#g-supprimer").addEventListener("click", function(){
+  if (!editionId) return;
+  if (!confirm("Supprimer cette mesure ?")) return;
+  var x = editionId; fermerFeuille(); retirer("mesures", x);
+});
+
+$("#f-mesures").addEventListener("submit", function(e){
+  e.preventDefault();
+  var o = {
+    id: id(),
+    ts: $("#m-date").value ? new Date($("#m-date").value).getTime() : Date.now(),
+    poids: num($("#m-poids").value),
+    sys: num($("#m-sys").value),
+    dia: num($("#m-dia").value),
+    pouls: num($("#m-pouls").value)
+  };
+  if (o.poids === null && o.sys === null && o.pouls === null){ toast("Renseignez au moins une valeur."); return; }
+  etat.vitaux.push(o); sauver(); this.reset(); fermerFeuille(); rendreJournal(); toast("Enregistré");
+});
+
+$("#f-activite").addEventListener("submit", function(e){
+  e.preventDefault();
+  var o = {
+    id: id(),
+    ts: $("#a-date").value ? new Date($("#a-date").value).getTime() : Date.now(),
+    type: $("#a-type").value.trim() || "Activité",
+    duree: num($("#a-duree").value),
+    intensite: $("#a-intensite").value
+  };
+  etat.activites.push(o); sauver(); this.reset(); fermerFeuille(); rendreJournal(); toast("Activité enregistrée");
+});
+
+/* ============ molette de saisie ============ */
+var CRAN = 46, valeursMolette = [], marques = [], modeClavier = false;
+
+function paramsMolette(){
+  return estMmol()
+    ? { min:1, max:33, pas:0.1, dec:1, defaut:1 }
+    : { min:20, max:600, pas:1, dec:0, defaut:100 };
+}
+function texteCran(v, dec){ return dec ? v.toFixed(dec).replace(".", ",") : String(v); }
+
+function construireMolette(){
+  var p = paramsMolette(), piste = $("#piste");
+  valeursMolette = [];
+  var n = Math.round((p.max - p.min)/p.pas);
+  for (var i=0; i<=n; i++) valeursMolette.push(Math.round((p.min + i*p.pas)*10)/10);
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el("div","vide-haut"));
+  valeursMolette.forEach(function(v){ frag.appendChild(el("div","cran", texteCran(v, p.dec))); });
+  frag.appendChild(el("div","vide-bas"));
+  piste.innerHTML = "";
+  piste.appendChild(frag);
+  marques = [];
+  $("#fen-unite").textContent = unite();
+  $("#g-unite").textContent = "(" + unite() + ")";
+}
+
+function poserMolette(valeur){
+  var p = paramsMolette();
+  var v = (valeur === null || valeur === undefined || isNaN(valeur)) ? p.defaut : valeur;
+  v = Math.min(p.max, Math.max(p.min, v));
+  $("#piste").scrollTop = Math.round((v - p.min)/p.pas) * CRAN;
+  majMolette();
+}
+
+function majMolette(){
+  var piste = $("#piste");
+  if (!valeursMolette.length) return;
+  var ixc = Math.max(0, Math.min(valeursMolette.length-1, Math.round(piste.scrollTop/CRAN)));
+  marques.forEach(function(n){ n.classList.remove("sel","proche"); n.style.color = ""; });
+  marques = [];
+  var enfants = piste.children;
+  for (var d=-2; d<=2; d++){
+    var n = enfants[ixc + d + 1];
+    if (!n || n.className.indexOf("cran") !== 0) continue;
+    n.classList.add(d === 0 ? "sel" : "proche");
+    marques.push(n);
+  }
+  var v = valeursMolette[ixc];
+  $("#g-valeur").value = v;
+  var c = classe(versMg(v));
+  if (enfants[ixc+1]) enfants[ixc+1].style.color = COULEUR[c];
+  var etatTxt = $("#molette-etat");
+  etatTxt.textContent = LIBELLE[c];
+  etatTxt.style.color = COULEUR[c];
+}
+
+var tickMolette = false;
+$("#piste").addEventListener("scroll", function(){
+  if (tickMolette) return;
+  tickMolette = true;
+  requestAnimationFrame(function(){ tickMolette = false; majMolette(); });
+});
+
+$("#bascule-saisie").addEventListener("click", function(){
+  modeClavier = !modeClavier;
+  $("#molette").hidden = modeClavier;
+  $("#g-valeur").hidden = !modeClavier;
+  this.textContent = modeClavier ? "Utiliser la molette" : "Saisir au clavier";
+  if (modeClavier){
+    $("#molette-etat").textContent = "Valeur en " + unite();
+    $("#molette-etat").style.color = "";
+    $("#g-valeur").focus();
+  } else {
+    poserMolette(num($("#g-valeur").value));
+  }
+});
+$("#g-valeur").addEventListener("input", function(){
+  if (!modeClavier) return;
+  var v = num(this.value);
+  var e = $("#molette-etat");
+  if (v === null || v <= 0){ e.textContent = "Valeur en " + unite(); e.style.color = ""; return; }
+  var c = classe(versMg(v));
+  e.textContent = LIBELLE[c]; e.style.color = COULEUR[c];
+});
+
+/* ============ réglages ============ */
+function remplirReglages(){
+  var r = etat.reglages;
+  $("#s-nom").value = r.nom || "";
+  $("#s-unite").value = r.unite;
+  $("#s-cible-bas").value = versAff(r.cibleBas);
+  $("#s-cible-haut").value = versAff(r.cibleHaut);
+  $("#s-hypo").value = versAff(r.hypo);
+  $("#s-hyper").value = versAff(r.hyper);
+  $("#entete-sous").textContent = r.nom ? "Carnet de " + r.nom : "Diabète — glycémies, traitement et rapport médical";
+}
+$("#s-unite").addEventListener("change", function(){
+  etat.reglages.unite = this.value;
+  remplirReglages(); sauver(); rendreSuivi(); rendreJournal();
+  construireMolette(); poserMolette(null);
+});
+$("#btn-reglages").addEventListener("click", function(){
+  var r = etat.reglages;
+  var cb = num($("#s-cible-bas").value), ch = num($("#s-cible-haut").value);
+  var hy = num($("#s-hypo").value), hr = num($("#s-hyper").value);
+  if (cb === null || ch === null || hy === null || hr === null){ toast("Toutes les valeurs sont requises."); return; }
+  if (cb >= ch){ toast("La cible basse doit être inférieure à la cible haute."); return; }
+  r.nom = $("#s-nom").value.trim();
+  r.cibleBas = versMg(cb); r.cibleHaut = versMg(ch);
+  r.hypo = versMg(hy); r.hyper = versMg(hr);
+  sauver(); remplirReglages(); rendreSuivi(); toast("Réglages enregistrés");
+});
+
+/* ============ export / import ============ */
+function telecharger(nom, contenu, type){
+  var b = new Blob([contenu], { type: type });
+  var u = URL.createObjectURL(b);
+  var a = document.createElement("a");
+  a.href = u; a.download = nom; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); }, 400);
+}
+$("#btn-csv").addEventListener("click", function(){
+  var l = etat.mesures.slice().sort(function(a,b){ return a.ts-b.ts; });
+  if (!l.length){ toast("Aucune mesure à exporter."); return; }
+  var lignes = ["Date;Heure;Glycemie ("+unite()+");Contexte;Insuline rapide (U);Insuline lente (U);Glucides (g);Traitement;Note"];
+  l.forEach(function(m){
+    var d = new Date(m.ts);
+    lignes.push([
+      d.toLocaleDateString("fr-FR"), heure(m.ts), affiche(m.mg), m.contexte,
+      m.rapide||"", m.lente||"", m.glucides||"",
+      (m.medic||"").replace(/;/g,","), (m.note||"").replace(/;/g,",")
+    ].join(";"));
+  });
+  telecharger("glyca-mesures.csv", "\uFEFF"+lignes.join("\r\n"), "text/csv;charset=utf-8");
+  toast("CSV exporté");
+});
+$("#btn-json").addEventListener("click", function(){
+  telecharger("glyca-sauvegarde.json", JSON.stringify(etat, null, 2), "application/json");
+  toast("Sauvegarde exportée");
+});
+$("#btn-import").addEventListener("click", function(){ $("#fichier-import").click(); });
+$("#fichier-import").addEventListener("change", function(e){
+  var f = e.target.files[0]; if (!f) return;
+  var lecteur = new FileReader();
+  lecteur.onload = function(){
+    try {
+      var d = JSON.parse(lecteur.result);
+      if (!d || !Array.isArray(d.mesures)) throw new Error("format");
+      if (!confirm("Remplacer les données actuelles par cette sauvegarde ?")) return;
+      etat.reglages = Object.assign(etat.reglages, d.reglages || {});
+      etat.mesures = d.mesures; etat.vitaux = d.vitaux || []; etat.activites = d.activites || [];
+      sauver(); remplirReglages(); rendreSuivi(); rendreJournal(); toast("Sauvegarde restaurée");
+    } catch(err){ toast("Fichier illisible : sauvegarde Glyca attendue."); }
+  };
+  lecteur.readAsText(f);
+  e.target.value = "";
+});
+$("#btn-vider").addEventListener("click", function(){
+  if (!confirm("Effacer définitivement toutes les mesures ? Exportez d'abord une sauvegarde si besoin.")) return;
+  etat.mesures = []; etat.vitaux = []; etat.activites = [];
+  sauver(); rendreSuivi(); rendreJournal(); toast("Données effacées");
+});
+
+/* ============ rapport ============ */
+function rendreRapport(){
+  var d1 = $("#rap-debut").value ? new Date($("#rap-debut").value + "T00:00").getTime() : 0;
+  var d2 = $("#rap-fin").value ? new Date($("#rap-fin").value + "T23:59").getTime() : Date.now();
+  var l = etat.mesures.filter(function(m){ return m.ts >= d1 && m.ts <= d2; }).sort(function(a,b){ return a.ts-b.ts; });
+  var c = $("#rapport"); c.innerHTML = "";
+  if (!l.length){ c.appendChild(el("div","vide","Aucune mesure sur cette période.")); return; }
+
+  var moy = moyenne(l);
+  var cpt = { bas:0, cible:0, haut:0, treshaut:0 };
+  l.forEach(function(m){ cpt[classe(m.mg)]++; });
+  var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
+  var jours = Math.max(1, Math.round((l[l.length-1].ts - l[0].ts)/86400000) + 1);
+
+  var e = el("div","carte");
+  var t = el("h2", null, "Rapport de suivi glycémique");
+  t.style.fontSize = "18px"; e.appendChild(t);
+  var st = el("div","quand", (etat.reglages.nom ? etat.reglages.nom + " · " : "") +
+    new Date(l[0].ts).toLocaleDateString("fr-FR") + " au " + new Date(l[l.length-1].ts).toLocaleDateString("fr-FR") +
+    " · " + l.length + " mesures sur " + jours + " jours");
+  st.style.marginBottom = "12px"; e.appendChild(st);
+
+  var tb = document.createElement("table");
+  function tr(k, v){
+    var r = document.createElement("tr");
+    var a = document.createElement("td"); a.textContent = k;
+    var b = document.createElement("td"); b.textContent = v; b.style.fontWeight = "600"; b.style.textAlign = "right";
+    r.appendChild(a); r.appendChild(b); tb.appendChild(r);
+  }
+  tr("Glycémie moyenne", affiche(moy) + " " + unite());
+  tr("HbA1c estimée (GMI)", (3.31 + 0.02392*moy).toFixed(1).replace(".",",") + " %");
+  tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
+  tr("Temps dans la cible", Math.round(cpt.cible/l.length*100) + " %");
+  tr("Sous la cible", Math.round(cpt.bas/l.length*100) + " % (" + cpt.bas + " mesures)");
+  tr("Au-dessus de la cible", Math.round((cpt.haut+cpt.treshaut)/l.length*100) + " %");
+  tr("Mesures par jour", (l.length/jours).toFixed(1).replace(".",","));
+  if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
+  e.appendChild(tb);
+  c.appendChild(e);
+
+  var det = el("div","carte");
+  det.appendChild(el("div","titre-bloc","Détail des mesures"));
+  var t2 = document.createElement("table");
+  var th = document.createElement("tr");
+  ["Date","Heure","Glyc.","Contexte","Insuline","Gluc."].forEach(function(x){
+    var h = document.createElement("th"); h.textContent = x; th.appendChild(h);
+  });
+  t2.appendChild(th);
+  l.forEach(function(m){
+    var r = document.createElement("tr");
+    var cells = [
+      jourCourt(m.ts), heure(m.ts), affiche(m.mg), m.contexte,
+      ((m.rapide||0)+(m.lente||0)) ? ((m.rapide||0)+(m.lente||0)) + " U" : "—",
+      m.glucides ? m.glucides + " g" : "—"
+    ];
+    cells.forEach(function(x, ix){
+      var d = document.createElement("td"); d.textContent = x;
+      if (ix === 2) d.style.color = COULEUR[classe(m.mg)];
+      r.appendChild(d);
+    });
+    t2.appendChild(r);
+  });
+  det.appendChild(t2);
+  c.appendChild(det);
+}
+$("#btn-rapport").addEventListener("click", rendreRapport);
+$("#btn-imprimer").addEventListener("click", function(){ rendreRapport(); setTimeout(function(){ window.print(); }, 250); });
+
+/* ============ démarrage ============ */
+function sauver(){ Store.save(etat); }
+
+Store.load().then(function(d){
+  if (d){
+    etat.reglages = Object.assign(etat.reglages, d.reglages || {});
+    etat.mesures = d.mesures || [];
+    etat.vitaux = d.vitaux || [];
+    etat.activites = d.activites || [];
+  }
+  var fin = new Date(), debut = new Date(Date.now() - 29*86400000);
+  $("#rap-fin").value = fin.toISOString().slice(0,10);
+  $("#rap-debut").value = debut.toISOString().slice(0,10);
+  remplirReglages();
+  construireMolette();
+  poserMolette(null);
+  rendreSuivi();
+  rendreJournal();
+});
+
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+})();
+</script>
+</body>
+</html>
