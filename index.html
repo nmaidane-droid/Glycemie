@@ -77,10 +77,9 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 .e-haut{color:var(--haut);background:rgba(232,129,26,.13)}
 .e-treshaut{color:var(--bas);background:rgba(229,72,77,.12)}
 
-.couloir{position:relative;height:34px;margin-top:16px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,rgba(229,72,77,.14),rgba(229,72,77,.14));}
-.couloir .bande{position:absolute;top:0;bottom:0;background:rgba(30,158,106,.16);border-left:1px dashed rgba(30,158,106,.55);border-right:1px dashed rgba(30,158,106,.55)}
-.couloir .jaune{position:absolute;top:0;bottom:0;background:rgba(224,180,0,.2)}
-.couloir .haute{position:absolute;top:0;bottom:0;background:rgba(232,129,26,.18)}
+.couloir{position:relative;height:34px;margin-top:16px;border-radius:8px;overflow:hidden;background:#EEF1F6}
+.couloir .seg{position:absolute;top:0;bottom:0}
+.couloir .seg.cible{box-shadow:inset 1px 0 0 rgba(30,158,106,.6),inset -1px 0 0 rgba(30,158,106,.6)}
 .couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--encre);border-radius:2px;transition:left .4s cubic-bezier(.2,.8,.2,1)}
 .couloir-legende{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ardoise);margin-top:5px}
 
@@ -529,14 +528,22 @@ function rendreDerniere(){
   var min = Math.min(r.hypo*0.6, 40), max = Math.max(r.hyper*1.15, r.cibleHaut*1.6);
   function pct(x){ return Math.max(0, Math.min(100, (x-min)/(max-min)*100)); }
   var co = el("div","couloir");
-  var bande = el("div","bande");
-  bande.style.left = pct(r.cibleBas)+"%"; bande.style.width = (pct(r.cibleHaut)-pct(r.cibleBas))+"%";
-  var jaune = el("div","jaune");
-  jaune.style.left = pct(r.hypo)+"%"; jaune.style.width = (pct(r.cibleBas)-pct(r.hypo))+"%";
-  var hausse = el("div","haute");
-  hausse.style.left = pct(r.cibleHaut)+"%"; hausse.style.width = (pct(r.hyper)-pct(r.cibleHaut))+"%";
+  var segments = [
+    { de:min,          a:r.hypo,      fond:"#F6CDCF", cls:"" },
+    { de:r.hypo,       a:r.cibleBas,  fond:"#F4E3A6", cls:"" },
+    { de:r.cibleBas,   a:r.cibleHaut, fond:"#BEE7D3", cls:" cible" },
+    { de:r.cibleHaut,  a:r.hyper,     fond:"#F9D6B4", cls:"" },
+    { de:r.hyper,      a:max,         fond:"#F6CDCF", cls:"" }
+  ];
+  segments.forEach(function(s){
+    var largeur = pct(s.a) - pct(s.de);
+    if (largeur <= 0) return;
+    var seg = el("div","seg"+s.cls);
+    seg.style.left = pct(s.de)+"%"; seg.style.width = largeur+"%"; seg.style.background = s.fond;
+    co.appendChild(seg);
+  });
   var cur = el("div","curseur"); cur.style.left = pct(d.mg)+"%";
-  co.appendChild(jaune); co.appendChild(bande); co.appendChild(hausse); co.appendChild(cur);
+  co.appendChild(cur);
   b.appendChild(co);
   var lg = el("div","couloir-legende");
   lg.appendChild(el("span",null, affiche(r.hypo)+" hypo"));

@@ -1,4 +1,4 @@
-const CACHE = 'glycemie-v1';
+const CACHE = 'glycemie-v2';
 const FICHIERS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
