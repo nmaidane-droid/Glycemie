@@ -24,8 +24,9 @@
   --indigo-fonce:#2C2A9E;
   --cible:#1E9E6A;
   --bas:#E5484D;
-  --haut:#E08600;
-  --tres-haut:#C2410C;
+  --jaune:#E0B400;
+  --haut:#E8811A;
+  --tres-haut:#E5484D;
   --r:14px;
   --safe-b:env(safe-area-inset-bottom,0px);
 }
@@ -70,14 +71,16 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 .quand{font-size:12.5px;color:var(--ardoise);margin-top:4px}
 .etat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:10px;padding:4px 10px;border-radius:999px}
 .etat i{width:7px;height:7px;border-radius:50%;background:currentColor;display:block}
-.e-bas{color:var(--bas);background:rgba(229,72,77,.1)}
+.e-hypo{color:var(--bas);background:rgba(229,72,77,.1)}
+.e-bas{color:var(--jaune);background:rgba(224,180,0,.14)}
 .e-cible{color:var(--cible);background:rgba(30,158,106,.1)}
-.e-haut{color:var(--haut);background:rgba(224,134,0,.12)}
-.e-treshaut{color:var(--tres-haut);background:rgba(194,65,12,.12)}
+.e-haut{color:var(--haut);background:rgba(232,129,26,.13)}
+.e-treshaut{color:var(--bas);background:rgba(229,72,77,.12)}
 
 .couloir{position:relative;height:34px;margin-top:16px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,rgba(229,72,77,.14),rgba(229,72,77,.14));}
 .couloir .bande{position:absolute;top:0;bottom:0;background:rgba(30,158,106,.16);border-left:1px dashed rgba(30,158,106,.55);border-right:1px dashed rgba(30,158,106,.55)}
-.couloir .haute{position:absolute;top:0;bottom:0;right:0;background:rgba(224,134,0,.13)}
+.couloir .jaune{position:absolute;top:0;bottom:0;background:rgba(224,180,0,.2)}
+.couloir .haute{position:absolute;top:0;bottom:0;background:rgba(232,129,26,.18)}
 .couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--encre);border-radius:2px;transition:left .4s cubic-bezier(.2,.8,.2,1)}
 .couloir-legende{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ardoise);margin-top:5px}
 
@@ -438,14 +441,18 @@ function num(v){ var n = parseFloat(String(v).replace(",",".")); return isNaN(n)
 
 function classe(mg){
   var r = etat.reglages;
-  if (mg < r.hypo) return "bas";
+  if (mg < r.hypo) return "hypo";
   if (mg < r.cibleBas) return "bas";
   if (mg <= r.cibleHaut) return "cible";
   if (mg < r.hyper) return "haut";
   return "treshaut";
 }
-var LIBELLE = { bas:"Sous la cible", cible:"Dans la cible", haut:"Au-dessus de la cible", treshaut:"Très au-dessus" };
-var COULEUR = { bas:"#E5484D", cible:"#1E9E6A", haut:"#E08600", treshaut:"#C2410C" };
+var PLAGES = ["hypo","bas","cible","haut","treshaut"];
+var LIBELLE = {
+  hypo:"Hypoglycémie", bas:"Juste sous la cible", cible:"Dans la cible",
+  haut:"Au-dessus de la cible", treshaut:"Très au-dessus"
+};
+var COULEUR = { hypo:"#E5484D", bas:"#E0B400", cible:"#1E9E6A", haut:"#E8811A", treshaut:"#E5484D" };
 
 function pourLocal(d){
   var t = new Date(d.getTime() - d.getTimezoneOffset()*60000);
@@ -524,9 +531,12 @@ function rendreDerniere(){
   var co = el("div","couloir");
   var bande = el("div","bande");
   bande.style.left = pct(r.cibleBas)+"%"; bande.style.width = (pct(r.cibleHaut)-pct(r.cibleBas))+"%";
-  var hausse = el("div","haute"); hausse.style.left = pct(r.hyper)+"%"; hausse.style.right = "0";
+  var jaune = el("div","jaune");
+  jaune.style.left = pct(r.hypo)+"%"; jaune.style.width = (pct(r.cibleBas)-pct(r.hypo))+"%";
+  var hausse = el("div","haute");
+  hausse.style.left = pct(r.cibleHaut)+"%"; hausse.style.width = (pct(r.hyper)-pct(r.cibleHaut))+"%";
   var cur = el("div","curseur"); cur.style.left = pct(d.mg)+"%";
-  co.appendChild(bande); co.appendChild(hausse); co.appendChild(cur);
+  co.appendChild(jaune); co.appendChild(bande); co.appendChild(hausse); co.appendChild(cur);
   b.appendChild(co);
   var lg = el("div","couloir-legende");
   lg.appendChild(el("span",null, affiche(r.hypo)+" hypo"));
@@ -534,8 +544,10 @@ function rendreDerniere(){
   lg.appendChild(el("span",null, affiche(r.hyper)+" alerte"));
   b.appendChild(lg);
 
-  if (c === "bas"){
-    b.appendChild(el("div","avis","Mesure sous votre seuil. Appliquez le protocole de resucrage convenu avec votre médecin, puis recontrôlez."));
+  if (c === "hypo"){
+    b.appendChild(el("div","avis","Mesure sous votre seuil d'hypoglycémie. Appliquez le protocole de resucrage convenu avec votre médecin, puis recontrôlez."));
+  } else if (c === "bas"){
+    b.appendChild(el("div","avis","Juste sous la cible, sans atteindre le seuil d'hypoglycémie. Surveillez la prochaine mesure."));
   } else if (c === "treshaut"){
     b.appendChild(el("div","avis","Mesure très élevée. Suivez la conduite à tenir donnée par votre équipe soignante (contrôle des cétones si prescrit) et contactez-la si cela se répète."));
   }
@@ -580,9 +592,9 @@ function rendreTIR(){
     var d = el("div"); d.style.width="100%"; d.style.background="var(--trait)"; barre.appendChild(d);
     return;
   }
-  var cpt = { bas:0, cible:0, haut:0, treshaut:0 };
+  var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
-  ["bas","cible","haut","treshaut"].forEach(function(k){
+  PLAGES.forEach(function(k){
     var p = cpt[k]/l.length*100;
     if (p > 0){ var d = el("div"); d.style.width = p+"%"; d.style.background = COULEUR[k]; barre.appendChild(d); }
     var s = el("span");
@@ -1038,7 +1050,7 @@ function rendreRapport(){
   if (!l.length){ c.appendChild(el("div","vide","Aucune mesure sur cette période.")); return; }
 
   var moy = moyenne(l);
-  var cpt = { bas:0, cible:0, haut:0, treshaut:0 };
+  var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
   var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
   var jours = Math.max(1, Math.round((l[l.length-1].ts - l[0].ts)/86400000) + 1);
@@ -1062,7 +1074,8 @@ function rendreRapport(){
   tr("HbA1c estimée (GMI)", (3.31 + 0.02392*moy).toFixed(1).replace(".",",") + " %");
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
   tr("Temps dans la cible", Math.round(cpt.cible/l.length*100) + " %");
-  tr("Sous la cible", Math.round(cpt.bas/l.length*100) + " % (" + cpt.bas + " mesures)");
+  tr("Hypoglycémies", Math.round(cpt.hypo/l.length*100) + " % (" + cpt.hypo + " mesures)");
+  tr("Juste sous la cible", Math.round(cpt.bas/l.length*100) + " % (" + cpt.bas + " mesures)");
   tr("Au-dessus de la cible", Math.round((cpt.haut+cpt.treshaut)/l.length*100) + " %");
   tr("Mesures par jour", (l.length/jours).toFixed(1).replace(".",","));
   if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
