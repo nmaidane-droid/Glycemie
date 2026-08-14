@@ -202,7 +202,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.0</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.1</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -309,7 +309,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.0 — 14/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.1 — 14/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1195,11 +1195,11 @@ function majSauvegarde(){
   var r = $("#rappel-sauvegarde");
   if (!r) return;
   var age = Date.now() - (etat.meta.dernierSecours || 0);
-  var besoin = etat.mesures.length >= 5 && age > 7*86400000;
+  var besoin = etat.mesures.length >= 5 && age > 3*86400000;
   r.hidden = !besoin;
   if (besoin){
     $("#rappel-texte").textContent = etat.meta.dernierSecours
-      ? "Votre dernier fichier de secours date de plus de 7 jours. Téléchargez-en un neuf et rangez-le dans Drive : si les données du navigateur sont effacées, c'est lui qui vous rendra vos " + etat.mesures.length + " mesures."
+      ? "Votre dernier fichier de secours date de plus de 3 jours. Téléchargez-en un neuf et rangez-le dans Drive : si les données du navigateur sont effacées, c'est lui qui vous rendra vos " + etat.mesures.length + " mesures."
       : "Vos " + etat.mesures.length + " mesures ne vivent que dans ce navigateur. Téléchargez un fichier de secours et rangez-le dans Drive — effacer les données du site les supprimerait sans retour.";
   }
 }
