@@ -1,4 +1,4 @@
-const CACHE = 'glycemie-v2';
+const CACHE = 'glycemie-v3';
 const FICHIERS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -15,6 +15,24 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  const estPage = e.request.mode === 'navigate' ||
+    (e.request.headers.get('accept') || '').indexOf('text/html') !== -1;
+
+  if (estPage) {
+    // la page passe toujours par le réseau d'abord : une mise en ligne est visible au rechargement
+    e.respondWith(
+      fetch(e.request)
+        .then(rep => {
+          const copie = rep.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copie));
+          return rep;
+        })
+        .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cache => {
       const reseau = fetch(e.request).then(rep => {
