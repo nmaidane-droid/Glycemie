@@ -176,21 +176,17 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--trait)}
 th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardoise)}
 
-/* ---------- molette de saisie ---------- */
-.molette{position:relative;height:184px;overflow:hidden;border:1px solid var(--trait);border-radius:14px;background:var(--surface)}
-.piste{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch}
-.piste::-webkit-scrollbar{display:none}
-.piste .cran{height:46px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;
-  font-family:"Space Grotesk",sans-serif;font-size:19px;font-weight:500;color:var(--ardoise);opacity:.55}
-.piste .cran.proche{opacity:.85;font-size:21px}
-.piste .cran.sel{opacity:1;font-size:32px;font-weight:700;letter-spacing:-.03em;color:var(--encre)}
-.piste .vide-haut,.piste .vide-bas{height:69px;scroll-snap-align:none}
-.fenetre{position:absolute;left:10px;right:10px;top:calc(50% - 24px);height:48px;border-radius:10px;
-  border-top:1px solid rgba(61,59,209,.55);border-bottom:1px solid rgba(61,59,209,.55);background:rgba(61,59,209,.05);pointer-events:none}
-.fenetre b{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11.5px;font-weight:600;color:var(--ardoise)}
-.sous-molette{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
-.sous-molette .etiq{font-size:12.5px;color:var(--ardoise)}
-.lien{font-size:13px;font-weight:600;color:var(--indigo);padding:4px 0}
+/* ---------- saisie de la glycémie ---------- */
+.saisie-glyc{position:relative}
+.saisie-glyc input{font-family:"Space Grotesk",sans-serif;font-size:34px;font-weight:700;letter-spacing:-.03em;
+  padding:14px 84px 14px 16px;border-radius:14px}
+.saisie-glyc input::-webkit-outer-spin-button,.saisie-glyc input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.saisie-glyc input[type=number]{-moz-appearance:textfield}
+.saisie-glyc .suffixe{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--ardoise);pointer-events:none}
+.sous-saisie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.sous-saisie .etiq{font-size:12.5px;color:var(--ardoise);font-weight:600}
+.rappel-plage{font-size:12px;color:var(--ardoise)}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
   header,nav,.fab,.non-imprimable,.voile,.feuille{display:none!important}
@@ -203,13 +199,19 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v1.4</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v1.7</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
 <main>
   <!-- ================= SUIVI ================= -->
   <section class="vue actif" id="v-suivi">
+    <div class="carte" id="rappel-sauvegarde" hidden style="border-color:rgba(61,59,209,.4);background:rgba(61,59,209,.04)">
+      <div class="titre-bloc">Fichier de secours</div>
+      <p style="margin:0 0 12px;font-size:13.5px" id="rappel-texte"></p>
+      <button class="gros" id="btn-secours">Télécharger la sauvegarde</button>
+      <button class="gros secondaire" id="btn-plus-tard">Plus tard</button>
+    </div>
     <div class="carte derniere" id="bloc-derniere"></div>
 
     <div class="grille" id="bloc-stats"></div>
@@ -283,17 +285,29 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
+      <div class="titre-bloc">HbA1c de départ</div>
+      <div class="duo">
+        <div class="champ"><label for="s-hba1c">Valeur du laboratoire (%)</label><input type="number" step="0.1" inputmode="decimal" id="s-hba1c" placeholder="Ex. 7,4"></div>
+        <div class="champ"><label for="s-hba1c-date">Date du prélèvement</label><input type="date" id="s-hba1c-date"></div>
+      </div>
+      <button class="gros" id="btn-hba1c">Enregistrer l'HbA1c de départ</button>
+      <button class="gros secondaire" id="btn-hba1c-effacer">Retirer cette valeur</button>
+      <div class="avis">L'estimation part de cette valeur et bascule progressivement vers vos mesures : au bout de 90 jours de suivi régulier, le résultat ne dépend plus que de vos glycémies. Cela reste une estimation, jamais un résultat de laboratoire.</div>
+    </div>
+
+    <div class="carte">
       <div class="titre-bloc">Vos données</div>
+      <div class="avis" id="etat-sauvegarde" style="margin:0 0 14px"></div>
       <button class="gros secondaire" id="btn-csv">Exporter en CSV (tableur)</button>
       <button class="gros secondaire" id="btn-json">Exporter une sauvegarde (JSON)</button>
       <button class="gros secondaire" id="btn-import">Restaurer une sauvegarde</button>
       <input type="file" id="fichier-import" accept=".json,application/json" hidden>
       <button class="gros danger" id="btn-vider">Effacer toutes les mesures</button>
-      <div class="aide">Tout reste sur cet appareil. Rien n'est envoyé sur un serveur.</div>
+      <div class="aide">Tout reste sur cet appareil, dans deux stockages distincts. Rien n'est envoyé sur un serveur — d'où l'importance du fichier de secours si vous changez de téléphone.</div>
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 1.4 — 14/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 1.7 — 14/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -324,15 +338,14 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
   <form id="f-glycemie">
     <div class="champ">
       <label for="g-valeur">Glycémie <span id="g-unite">(mg/dL)</span></label>
-      <div class="molette" id="molette">
-        <div class="piste" id="piste"></div>
-        <div class="fenetre"><b id="fen-unite">mg/dL</b></div>
+      <div class="saisie-glyc">
+        <input type="number" step="any" inputmode="decimal" id="g-valeur" placeholder="—" autocomplete="off" required>
+        <span class="suffixe" id="suffixe-unite">mg/dL</span>
       </div>
-      <div class="sous-molette">
-        <span class="etiq" id="molette-etat">Faites défiler pour ajuster</span>
-        <button type="button" class="lien" id="bascule-saisie">Saisir au clavier</button>
+      <div class="sous-saisie">
+        <span class="etiq" id="molette-etat">Entrez la valeur</span>
+        <span class="rappel-plage" id="rappel-plage"></span>
       </div>
-      <input type="number" step="any" inputmode="decimal" id="g-valeur" hidden>
     </div>
     <div class="champ">
       <label>Contexte</label>
@@ -385,23 +398,67 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 (function(){
 "use strict";
 
-/* ============ stockage (aperçu Claude ou appareil) ============ */
+/* ============ stockage : localStorage + miroir IndexedDB ============ */
 var CLE = "glycemie.v1";
 var CLE_ANCIENNE = "glyca.v1";
+
+var Miroir = (function(){
+  var base = null;
+  function ouvrir(){
+    return new Promise(function(res, rej){
+      if (base) return res(base);
+      if (!window.indexedDB) return rej();
+      var r = indexedDB.open("glycemie", 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore("sauvegarde"); };
+      r.onsuccess = function(){ base = r.result; res(base); };
+      r.onerror = function(){ rej(); };
+    });
+  }
+  return {
+    ecrire: function(v){
+      return ouvrir().then(function(d){
+        return new Promise(function(res, rej){
+          var t = d.transaction("sauvegarde", "readwrite");
+          t.objectStore("sauvegarde").put(v, "etat");
+          t.oncomplete = function(){ res(); };
+          t.onerror = function(){ rej(); };
+        });
+      });
+    },
+    lire: function(){
+      return ouvrir().then(function(d){
+        return new Promise(function(res, rej){
+          var t = d.transaction("sauvegarde", "readonly");
+          var q = t.objectStore("sauvegarde").get("etat");
+          q.onsuccess = function(){ res(q.result || null); };
+          q.onerror = function(){ rej(); };
+        });
+      });
+    }
+  };
+})();
+
+function lireLocal(){
+  try {
+    var s = localStorage.getItem(CLE) || localStorage.getItem(CLE_ANCIENNE);
+    return s ? JSON.parse(s) : null;
+  } catch(e){ return null; }
+}
+
 var Store = {
   load: function(){
-    return new Promise(function(res){
-      if (window.storage && window.storage.get) {
-        window.storage.get(CLE, false).then(function(r){
-          res(r && r.value ? JSON.parse(r.value) : local());
-        }).catch(function(){ res(local()); });
-      } else { res(local()); }
-      function local(){
-        try {
-          var s = localStorage.getItem(CLE) || localStorage.getItem(CLE_ANCIENNE);
-          return s ? JSON.parse(s) : null;
-        } catch(e){ return null; }
-      }
+    var depuisStorage = (window.storage && window.storage.get)
+      ? window.storage.get(CLE, false).then(function(r){ return r && r.value ? JSON.parse(r.value) : null; }).catch(function(){ return null; })
+      : Promise.resolve(null);
+    return depuisStorage.then(function(d){
+      if (d && d.mesures) return d;
+      var l = lireLocal();
+      if (l && l.mesures) return l;
+      // dernier recours : le miroir, si le stockage du navigateur a été vidé
+      return Miroir.lire().then(function(v){
+        if (!v) return l;
+        try { return typeof v === "string" ? JSON.parse(v) : v; } catch(e){ return l; }
+      }).catch(function(){ return l; });
     });
   },
   save: function(d){
@@ -410,15 +467,17 @@ var Store = {
     if (window.storage && window.storage.set) {
       try { window.storage.set(CLE, v, false).catch(function(){}); } catch(e){}
     }
+    Miroir.ecrire(v).catch(function(){});
   }
 };
 
 /* ============ état ============ */
 var etat = {
-  reglages: { nom:"", unite:"mg", cibleBas:80, cibleHaut:150, hypo:70, hyper:250 },
+  reglages: { nom:"", unite:"mg", cibleBas:80, cibleHaut:150, hypo:70, hyper:250, hba1c:null, hba1cDate:null },
   mesures: [],   // glycémies
   vitaux: [],    // poids / tension
-  activites: []
+  activites: [],
+  meta: { dernier:0, dernierSecours:0 }
 };
 var periode = 14;
 var filtre = "tous";
@@ -566,6 +625,38 @@ function moyenne(liste){
   return s/liste.length;
 }
 
+function estimerHbA1c(){
+  var r = etat.reglages;
+  var base = (typeof r.hba1c === "number") ? r.hba1c : null;
+  var baseTs = r.hba1cDate ? new Date(r.hba1cDate + "T12:00").getTime() : null;
+
+  if (base === null || !baseTs){
+    var l30 = surPeriode(30);
+    if (!l30.length) return { valeur:null, note:"30 j de données requises" };
+    return { valeur: 3.31 + 0.02392*moyenne(l30), note:"indicateur GMI sur 30 j" };
+  }
+
+  var depuisBase = etat.mesures.filter(function(m){ return m.ts >= baseTs; });
+  var jours = Math.max(0, (Date.now() - baseTs)/86400000);
+  if (!depuisBase.length || jours < 1){
+    return { valeur: base, note:"valeur de départ, en attente de mesures" };
+  }
+
+  var gmi = 3.31 + 0.02392*moyenne(depuisBase);
+  var vus = {};
+  depuisBase.forEach(function(m){ vus[new Date(m.ts).toDateString()] = 1; });
+  var joursMesures = Object.keys(vus).length;
+  var couverture = Math.min(1, joursMesures/Math.min(jours, 90));
+  var poids = Math.min(1, jours/90) * couverture;
+  var val = base*(1-poids) + gmi*poids;
+  var pc = Math.round(poids*100);
+  return {
+    valeur: val,
+    note: "départ " + base.toFixed(1).replace(".",",") + " % · " + Math.round(jours) + " j de suivi · vos mesures pèsent " + pc + " %"
+  };
+}
+function pourcent(v){ return v.toFixed(1).replace(".",",") + " %"; }
+
 function rendreStats(){
   var g = $("#bloc-stats"); g.innerHTML = "";
   var l7 = surPeriode(7), l14 = surPeriode(14), l30 = surPeriode(30);
@@ -579,8 +670,8 @@ function rendreStats(){
     g.appendChild(s);
   }
   stat("Moyenne 7 j", moy7 ? affiche(moy7) : "—", moy7 ? unite()+" · "+l7.length+" mesures" : "pas de mesure");
-  stat("HbA1c estimée", moy30 ? (3.31 + 0.02392*moy30).toFixed(1).replace(".",",")+" %" : "—",
-       moy30 ? "indicateur GMI sur 30 j" : "30 j de données requises");
+  var a1c = estimerHbA1c();
+  stat("HbA1c estimée", a1c.valeur === null ? "—" : pourcent(a1c.valeur), a1c.note);
   var hypos = l14.filter(function(m){ return m.mg < etat.reglages.hypo; }).length;
   stat("Hypoglycémies", String(hypos), "sur 14 jours");
   var ajd = etat.mesures.filter(function(m){ return new Date(m.ts).toDateString() === new Date().toDateString(); });
@@ -789,11 +880,10 @@ function ouvrirFeuille(onglet, mesure){
   choisirOnglet(onglet);
   var maintenant = pourLocal(new Date());
   $("#g-date").value = maintenant; $("#m-date").value = maintenant; $("#a-date").value = maintenant;
-  $("#g-unite").textContent = "(" + unite() + ")";
+  majUniteSaisie();
   if (mesure){
     editionId = mesure.id;
     $("#g-valeur").value = versAff(mesure.mg);
-    poserMolette(versAff(mesure.mg));
     contexteChoisi = mesure.contexte;
     $("#g-date").value = pourLocal(new Date(mesure.ts));
     $("#g-rapide").value = mesure.rapide || "";
@@ -806,11 +896,17 @@ function ouvrirFeuille(onglet, mesure){
     $("#f-glycemie").reset();
     $("#g-supprimer").hidden = true;
     $("#g-date").value = maintenant;
-    poserMolette(null);
   }
   rendreContextes();
   $("#voile").classList.add("ouvert");
   $("#feuille").classList.add("ouvert");
+  majStatutSaisie();
+  setTimeout(function(){
+    var champ = $("#g-valeur");
+    if ($("#f-glycemie").hidden) return;
+    champ.focus();
+    if (champ.value) champ.select();
+  }, 320);
 }
 function fermerFeuille(){
   $("#voile").classList.remove("ouvert");
@@ -885,90 +981,25 @@ $("#f-activite").addEventListener("submit", function(e){
   etat.activites.push(o); sauver(); this.reset(); fermerFeuille(); rendreJournal(); toast("Activité enregistrée");
 });
 
-/* ============ molette de saisie ============ */
-var CRAN = 46, valeursMolette = [], marques = [], modeClavier = false;
-
-function paramsMolette(){
-  return estMmol()
-    ? { min:1, max:33, pas:0.1, dec:1, defaut:1 }
-    : { min:20, max:600, pas:1, dec:0, defaut:100 };
-}
-function texteCran(v, dec){ return dec ? v.toFixed(dec).replace(".", ",") : String(v); }
-
-function construireMolette(){
-  var p = paramsMolette(), piste = $("#piste");
-  valeursMolette = [];
-  var n = Math.round((p.max - p.min)/p.pas);
-  for (var i=0; i<=n; i++) valeursMolette.push(Math.round((p.min + i*p.pas)*10)/10);
-  var frag = document.createDocumentFragment();
-  frag.appendChild(el("div","vide-haut"));
-  valeursMolette.forEach(function(v){ frag.appendChild(el("div","cran", texteCran(v, p.dec))); });
-  frag.appendChild(el("div","vide-bas"));
-  piste.innerHTML = "";
-  piste.appendChild(frag);
-  marques = [];
-  $("#fen-unite").textContent = unite();
+/* ============ saisie de la glycémie ============ */
+function majUniteSaisie(){
   $("#g-unite").textContent = "(" + unite() + ")";
+  $("#suffixe-unite").textContent = unite();
+  var r = etat.reglages;
+  $("#rappel-plage").textContent = "cible " + affiche(r.cibleBas) + "–" + affiche(r.cibleHaut);
+  majStatutSaisie();
 }
 
-function poserMolette(valeur){
-  var p = paramsMolette();
-  var v = (valeur === null || valeur === undefined || isNaN(valeur)) ? p.defaut : valeur;
-  v = Math.min(p.max, Math.max(p.min, v));
-  $("#piste").scrollTop = Math.round((v - p.min)/p.pas) * CRAN;
-  majMolette();
-}
-
-function majMolette(){
-  var piste = $("#piste");
-  if (!valeursMolette.length) return;
-  var ixc = Math.max(0, Math.min(valeursMolette.length-1, Math.round(piste.scrollTop/CRAN)));
-  marques.forEach(function(n){ n.classList.remove("sel","proche"); n.style.color = ""; });
-  marques = [];
-  var enfants = piste.children;
-  for (var d=-2; d<=2; d++){
-    var n = enfants[ixc + d + 1];
-    if (!n || n.className.indexOf("cran") !== 0) continue;
-    n.classList.add(d === 0 ? "sel" : "proche");
-    marques.push(n);
-  }
-  var v = valeursMolette[ixc];
-  $("#g-valeur").value = v;
-  var c = classe(versMg(v));
-  if (enfants[ixc+1]) enfants[ixc+1].style.color = COULEUR[c];
-  var etatTxt = $("#molette-etat");
-  etatTxt.textContent = LIBELLE[c];
-  etatTxt.style.color = COULEUR[c];
-}
-
-var tickMolette = false;
-$("#piste").addEventListener("scroll", function(){
-  if (tickMolette) return;
-  tickMolette = true;
-  requestAnimationFrame(function(){ tickMolette = false; majMolette(); });
-});
-
-$("#bascule-saisie").addEventListener("click", function(){
-  modeClavier = !modeClavier;
-  $("#molette").hidden = modeClavier;
-  $("#g-valeur").hidden = !modeClavier;
-  this.textContent = modeClavier ? "Utiliser la molette" : "Saisir au clavier";
-  if (modeClavier){
-    $("#molette-etat").textContent = "Valeur en " + unite();
-    $("#molette-etat").style.color = "";
-    $("#g-valeur").focus();
-  } else {
-    poserMolette(num($("#g-valeur").value));
-  }
-});
-$("#g-valeur").addEventListener("input", function(){
-  if (!modeClavier) return;
-  var v = num(this.value);
+function majStatutSaisie(){
   var e = $("#molette-etat");
-  if (v === null || v <= 0){ e.textContent = "Valeur en " + unite(); e.style.color = ""; return; }
+  var v = num($("#g-valeur").value);
+  if (v === null || v <= 0){ e.textContent = "Entrez la valeur"; e.style.color = ""; return; }
   var c = classe(versMg(v));
-  e.textContent = LIBELLE[c]; e.style.color = COULEUR[c];
-});
+  e.textContent = LIBELLE[c];
+  e.style.color = COULEUR[c];
+}
+
+$("#g-valeur").addEventListener("input", majStatutSaisie);
 
 /* ============ réglages ============ */
 function remplirReglages(){
@@ -979,13 +1010,30 @@ function remplirReglages(){
   $("#s-cible-haut").value = versAff(r.cibleHaut);
   $("#s-hypo").value = versAff(r.hypo);
   $("#s-hyper").value = versAff(r.hyper);
+  $("#s-hba1c").value = (typeof r.hba1c === "number") ? r.hba1c : "";
+  $("#s-hba1c-date").value = r.hba1cDate || "";
   $("#entete-sous").textContent = r.nom ? "Carnet de " + r.nom : "Diabète — glycémies, traitement et rapport médical";
 }
 $("#s-unite").addEventListener("change", function(){
   etat.reglages.unite = this.value;
   remplirReglages(); sauver(); rendreSuivi(); rendreJournal();
-  construireMolette(); poserMolette(null);
+  majUniteSaisie();
 });
+$("#btn-hba1c").addEventListener("click", function(){
+  var v = num($("#s-hba1c").value), d = $("#s-hba1c-date").value;
+  if (v === null){ toast("Entrez la valeur d'HbA1c du laboratoire."); return; }
+  if (v < 3 || v > 20){ toast("Valeur hors des bornes plausibles (3 à 20 %)."); return; }
+  if (!d){ toast("Indiquez la date du prélèvement."); return; }
+  if (new Date(d + "T12:00").getTime() > Date.now()){ toast("La date ne peut pas être dans le futur."); return; }
+  etat.reglages.hba1c = v;
+  etat.reglages.hba1cDate = d;
+  sauver(); remplirReglages(); rendreSuivi(); toast("HbA1c de départ enregistrée");
+});
+$("#btn-hba1c-effacer").addEventListener("click", function(){
+  etat.reglages.hba1c = null; etat.reglages.hba1cDate = null;
+  sauver(); remplirReglages(); rendreSuivi(); toast("Estimation basée sur vos seules mesures");
+});
+
 $("#btn-reglages").addEventListener("click", function(){
   var r = etat.reglages;
   var cb = num($("#s-cible-bas").value), ch = num($("#s-cible-haut").value);
@@ -1021,9 +1069,12 @@ $("#btn-csv").addEventListener("click", function(){
   telecharger("glycemie-mesures.csv", "\uFEFF"+lignes.join("\r\n"), "text/csv;charset=utf-8");
   toast("CSV exporté");
 });
-$("#btn-json").addEventListener("click", function(){
-  telecharger("glycemie-sauvegarde.json", JSON.stringify(etat, null, 2), "application/json");
-  toast("Sauvegarde exportée");
+$("#btn-json").addEventListener("click", exporterSecours);
+$("#btn-secours").addEventListener("click", exporterSecours);
+$("#btn-plus-tard").addEventListener("click", function(){
+  reporteSecours = true;
+  majSauvegarde();
+  toast("Rappel reporté à la prochaine ouverture");
 });
 $("#btn-import").addEventListener("click", function(){ $("#fichier-import").click(); });
 $("#fichier-import").addEventListener("change", function(e){
@@ -1036,6 +1087,7 @@ $("#fichier-import").addEventListener("change", function(e){
       if (!confirm("Remplacer les données actuelles par cette sauvegarde ?")) return;
       etat.reglages = Object.assign(etat.reglages, d.reglages || {});
       etat.mesures = d.mesures; etat.vitaux = d.vitaux || []; etat.activites = d.activites || [];
+      etat.meta = Object.assign(etat.meta, d.meta || {});
       sauver(); remplirReglages(); rendreSuivi(); rendreJournal(); toast("Sauvegarde restaurée");
     } catch(err){ toast("Fichier illisible : sauvegarde Glycémie attendue."); }
   };
@@ -1078,7 +1130,9 @@ function rendreRapport(){
     r.appendChild(a); r.appendChild(b); tb.appendChild(r);
   }
   tr("Glycémie moyenne", affiche(moy) + " " + unite());
-  tr("HbA1c estimée (GMI)", (3.31 + 0.02392*moy).toFixed(1).replace(".",",") + " %");
+  var a1cRap = estimerHbA1c();
+  if (a1cRap.valeur !== null) tr("HbA1c estimée", pourcent(a1cRap.valeur) + " (" + a1cRap.note + ")");
+  tr("GMI de la période", pourcent(3.31 + 0.02392*moy));
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
   tr("Temps dans la cible", Math.round(cpt.cible/l.length*100) + " %");
   tr("Hypoglycémies", Math.round(cpt.hypo/l.length*100) + " % (" + cpt.hypo + " mesures)");
@@ -1118,7 +1172,43 @@ $("#btn-rapport").addEventListener("click", rendreRapport);
 $("#btn-imprimer").addEventListener("click", function(){ rendreRapport(); setTimeout(function(){ window.print(); }, 250); });
 
 /* ============ démarrage ============ */
-function sauver(){ Store.save(etat); }
+function sauver(){
+  etat.meta.dernier = Date.now();
+  Store.save(etat);
+  majSauvegarde();
+}
+
+var reporteSecours = false;
+
+function majSauvegarde(){
+  var e = $("#etat-sauvegarde");
+  if (e){
+    var t = etat.meta.dernier
+      ? "Sauvegarde automatique active — dernière écriture " + depuis(etat.meta.dernier) + "."
+      : "Sauvegarde automatique active : chaque mesure est écrite dès l'enregistrement.";
+    var s = etat.meta.dernierSecours
+      ? " Dernier fichier de secours : " + new Date(etat.meta.dernierSecours).toLocaleDateString("fr-FR") + "."
+      : " Aucun fichier de secours téléchargé pour l'instant.";
+    e.textContent = t + s;
+  }
+  var r = $("#rappel-sauvegarde");
+  if (!r) return;
+  var age = Date.now() - (etat.meta.dernierSecours || 0);
+  var besoin = etat.mesures.length >= 5 && age > 7*86400000 && !reporteSecours;
+  r.hidden = !besoin;
+  if (besoin){
+    $("#rappel-texte").textContent = etat.meta.dernierSecours
+      ? "Votre dernier fichier de secours date de plus de 7 jours. Téléchargez-en un neuf et rangez-le dans Drive : si les données du navigateur sont effacées, c'est lui qui vous rendra vos " + etat.mesures.length + " mesures."
+      : "Vos " + etat.mesures.length + " mesures ne vivent que dans ce navigateur. Téléchargez un fichier de secours et rangez-le dans Drive — effacer les données du site les supprimerait sans retour.";
+  }
+}
+
+function exporterSecours(){
+  telecharger("glycemie-sauvegarde.json", JSON.stringify(etat, null, 2), "application/json");
+  etat.meta.dernierSecours = Date.now();
+  sauver();
+  toast("Fichier de secours téléchargé");
+}
 
 Store.load().then(function(d){
   if (d){
@@ -1126,13 +1216,14 @@ Store.load().then(function(d){
     etat.mesures = d.mesures || [];
     etat.vitaux = d.vitaux || [];
     etat.activites = d.activites || [];
+    etat.meta = Object.assign(etat.meta, d.meta || {});
   }
   var fin = new Date(), debut = new Date(Date.now() - 29*86400000);
   $("#rap-fin").value = fin.toISOString().slice(0,10);
   $("#rap-debut").value = debut.toISOString().slice(0,10);
   remplirReglages();
-  construireMolette();
-  poserMolette(null);
+  majSauvegarde();
+  majUniteSaisie();
   rendreSuivi();
   rendreJournal();
 });
