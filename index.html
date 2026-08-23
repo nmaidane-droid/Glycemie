@@ -105,6 +105,14 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 svg{display:block;width:100%;height:auto;overflow:visible}
 .vide{color:var(--ardoise);font-size:13.5px;text-align:center;padding:22px 8px}
 
+/* ---------- barre de vue ---------- */
+.barre-vue{display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px}
+.barre-vue h2{font-size:20px}
+.fermer-vue{width:42px;height:42px;border-radius:50%;border:1px solid var(--trait);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.fermer-vue svg{width:20px;height:20px;stroke:var(--encre);fill:none;stroke-width:2;stroke-linecap:round}
+.fermer-vue:active{background:var(--fond)}
+
 /* ---------- journal ---------- */
 .jour{margin-bottom:16px}
 .jour h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ardoise);margin-bottom:8px}
@@ -202,7 +210,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.1</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.2</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -240,6 +248,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 
   <!-- ================= JOURNAL ================= -->
   <section class="vue" id="v-journal">
+    <div class="barre-vue"><h2>Journal</h2><button class="fermer-vue" aria-label="Revenir au suivi"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="carte">
       <div class="titre-bloc">Filtrer</div>
       <div class="puces" id="filtres"></div>
@@ -249,6 +258,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 
   <!-- ================= RAPPORT ================= -->
   <section class="vue" id="v-rapport">
+    <div class="barre-vue"><h2>Rapport</h2><button class="fermer-vue" aria-label="Revenir au suivi"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="carte non-imprimable">
       <div class="titre-bloc">Rapport pour le médecin</div>
       <div class="duo">
@@ -264,6 +274,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 
   <!-- ================= RÉGLAGES ================= -->
   <section class="vue" id="v-reglages">
+    <div class="barre-vue"><h2>Réglages</h2><button class="fermer-vue" aria-label="Revenir au suivi"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="carte">
       <div class="titre-bloc">Identité du carnet</div>
       <div class="champ"><label for="s-nom">Nom affiché sur le rapport</label><input id="s-nom" placeholder="Prénom Nom"></div>
@@ -309,7 +320,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.1 — 14/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.2 — 23/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -484,9 +495,9 @@ var etat = {
 var periode = 14;
 var filtre = "tous";
 var editionId = null;
-var contexteChoisi = "Avant repas";
+var contexteChoisi = "À jeun";
 
-var CONTEXTES = ["À jeun","Avant repas","2 h après repas","Avant sport","Après sport","Au coucher","Nuit","Malaise","Autre"];
+var CONTEXTES = ["À jeun","Avant repas"];
 
 /* ============ utilitaires ============ */
 function $(s){ return document.querySelector(s); }
@@ -545,15 +556,42 @@ function surPeriode(jours){
 }
 
 /* ============ vues ============ */
-function ouvrirVue(nom){
+var vueCourante = "suivi";
+
+function ouvrirVue(nom, sansHistorique){
   document.querySelectorAll(".vue").forEach(function(v){ v.classList.remove("actif"); });
   $("#v-"+nom).classList.add("actif");
   document.querySelectorAll("nav button").forEach(function(b){ b.classList.toggle("actif", b.dataset.vue===nom); });
   window.scrollTo(0,0);
+  vueCourante = nom;
   if (nom === "journal") rendreJournal();
+  if (!sansHistorique && nom !== "suivi"){
+    try { history.pushState({ vue:nom }, ""); } catch(e){}
+  }
 }
+
+// revenir au suivi en consommant l'entrée d'historique, pour que le retour natif reste cohérent
+function revenirSuivi(){
+  if (history.state && history.state.vue) history.back();
+  else ouvrirVue("suivi", true);
+}
+
+document.querySelectorAll(".fermer-vue").forEach(function(b){
+  b.addEventListener("click", revenirSuivi);
+});
+
+window.addEventListener("popstate", function(e){
+  var s = e.state;
+  if ($("#feuille").classList.contains("ouvert") && (!s || !s.feuille)){
+    fermerFeuille(true);
+  }
+  ouvrirVue((s && s.vue) ? s.vue : "suivi", true);
+});
 document.querySelectorAll("nav button").forEach(function(b){
-  b.addEventListener("click", function(){ ouvrirVue(b.dataset.vue); });
+  b.addEventListener("click", function(){
+    if (b.dataset.vue === "suivi") revenirSuivi();
+    else ouvrirVue(b.dataset.vue);
+  });
 });
 
 /* ============ tableau de bord ============ */
@@ -754,15 +792,19 @@ function rendreGraphe(){
 }
 
 var TRANCHES = [
-  { n:"Nuit", a:0, b:6 }, { n:"Matin", a:6, b:10 }, { n:"Midi", a:10, b:14 },
-  { n:"Après-midi", a:14, b:18 }, { n:"Soir", a:18, b:22 }, { n:"Coucher", a:22, b:24 }
+  { n:"Matin", a:5, b:11 },
+  { n:"Midi", a:11, b:17 },
+  { n:"Soir", a:17, b:5 }
 ];
+function dansTranche(heure, t){
+  return (t.a < t.b) ? (heure >= t.a && heure < t.b) : (heure >= t.a || heure < t.b);
+}
 function rendreProfil(){
   var c = $("#profil"); c.innerHTML = "";
   var l = surPeriode(periode);
   if (!l.length){ c.appendChild(el("div","vide","Pas encore de données sur cette période.")); return; }
   var stats = TRANCHES.map(function(t){
-    var s = l.filter(function(m){ var h = new Date(m.ts).getHours(); return h >= t.a && h < t.b; });
+    var s = l.filter(function(m){ return dansTranche(new Date(m.ts).getHours(), t); });
     return { n:t.n, moy: s.length ? moyenne(s) : null, n2: s.length };
   });
   var maxi = Math.max.apply(null, stats.map(function(s){ return s.moy || 0 ; }).concat([etat.reglages.cibleHaut]));
@@ -902,6 +944,7 @@ function ouvrirFeuille(onglet, mesure){
   rendreContextes();
   $("#voile").classList.add("ouvert");
   $("#feuille").classList.add("ouvert");
+  try { history.pushState({ feuille:true, vue:vueCourante }, ""); } catch(e){}
   majStatutSaisie();
   setTimeout(function(){
     var champ = $("#g-valeur");
@@ -910,10 +953,11 @@ function ouvrirFeuille(onglet, mesure){
     if (champ.value) champ.select();
   }, 320);
 }
-function fermerFeuille(){
+function fermerFeuille(sansHistorique){
   $("#voile").classList.remove("ouvert");
   $("#feuille").classList.remove("ouvert");
   editionId = null;
+  if (!sansHistorique && history.state && history.state.feuille) history.back();
 }
 function choisirOnglet(nom){
   document.querySelectorAll(".onglets button").forEach(function(b){ b.classList.toggle("actif", b.dataset.onglet===nom); });
