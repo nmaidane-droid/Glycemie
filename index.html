@@ -222,7 +222,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.2</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.3</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -291,6 +291,8 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     <div class="carte">
       <div class="titre-bloc">Identité du carnet</div>
       <div class="champ"><label for="s-nom">Nom affiché sur le rapport</label><input id="s-nom" placeholder="Prénom Nom"></div>
+      <div class="champ"><label for="s-naissance">Date de naissance</label>
+        <input id="s-naissance" inputmode="numeric" maxlength="10" placeholder="JJ/MM/AAAA" autocomplete="bday"></div>
       <div class="champ"><label for="s-unite">Unité de mesure</label>
         <select id="s-unite"><option value="mg">mg/dL</option><option value="mmol">mmol/L</option></select>
       </div>
@@ -333,7 +335,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.2 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.3 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -502,7 +504,7 @@ var Store = {
 
 /* ============ état ============ */
 var etat = {
-  reglages: { nom:"", unite:"mg", cibleBas:80, cibleHaut:150, hypo:70, hyper:250, hba1c:null, hba1cDate:null },
+  reglages: { nom:"", unite:"mg", cibleBas:80, cibleHaut:150, hypo:70, hyper:250, hba1c:null, hba1cDate:null, naissance:"" },
   mesures: [],   // glycémies
   vitaux: [],    // poids / tension
   activites: [],
@@ -718,6 +720,37 @@ function estimerHbA1c(){
   };
 }
 function pourcent(v){ return v.toFixed(1).replace(".",",") + " %"; }
+function naissanceISO(txt){
+  var m = String(txt).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  var j = +m[1], mo = +m[2], a = +m[3];
+  var d = new Date(a, mo-1, j);
+  if (d.getDate() !== j || d.getMonth() !== mo-1 || d.getFullYear() !== a) return null;
+  if (d > new Date() || a < 1900) return null;
+  return a + "-" + m[2] + "-" + m[1];
+}
+function naissanceFR(iso){
+  if (!iso) return "";
+  var p = iso.split("-");
+  return p[2] + "/" + p[1] + "/" + p[0];
+}
+function ageAns(iso){
+  if (!iso) return null;
+  var p = iso.split("-"), n = new Date(+p[0], +p[1]-1, +p[2]), h = new Date();
+  var a = h.getFullYear() - n.getFullYear();
+  var m = h.getMonth() - n.getMonth();
+  if (m < 0 || (m === 0 && h.getDate() < n.getDate())) a--;
+  return a;
+}
+function identiteRapport(){
+  var r = etat.reglages, bouts = [];
+  if (r.nom) bouts.push(r.nom);
+  if (r.naissance){
+    var a = ageAns(r.naissance);
+    bouts.push("née le " + naissanceFR(r.naissance) + (a !== null ? " (" + a + " ans)" : ""));
+  }
+  return bouts.join("  ·  ");
+}
 function pluriel(n, mot){ return n + " " + mot + (n > 1 ? "s" : ""); }
 
 function rendreStats(){
@@ -1094,6 +1127,7 @@ function remplirReglages(){
   $("#s-cible-haut").value = versAff(r.cibleHaut);
   $("#s-hypo").value = versAff(r.hypo);
   $("#s-hyper").value = versAff(r.hyper);
+  $("#s-naissance").value = naissanceFR(r.naissance);
   $("#s-hba1c").value = (typeof r.hba1c === "number") ? r.hba1c : "";
   $("#s-hba1c-date").value = r.hba1cDate || "";
   $("#entete-sous").textContent = r.nom ? "Carnet de " + r.nom : "Diabète — glycémies, traitement et rapport médical";
@@ -1118,12 +1152,25 @@ $("#btn-hba1c-effacer").addEventListener("click", function(){
   sauver(); remplirReglages(); rendreSuivi(); toast("Estimation basée sur vos seules mesures");
 });
 
+$("#s-naissance").addEventListener("input", function(){
+  var d = this.value.replace(/\D/g, "").slice(0,8), s = d;
+  if (d.length > 4) s = d.slice(0,2) + "/" + d.slice(2,4) + "/" + d.slice(4);
+  else if (d.length > 2) s = d.slice(0,2) + "/" + d.slice(2);
+  this.value = s;
+});
+
 $("#btn-reglages").addEventListener("click", function(){
   var r = etat.reglages;
   var cb = num($("#s-cible-bas").value), ch = num($("#s-cible-haut").value);
   var hy = num($("#s-hypo").value), hr = num($("#s-hyper").value);
   if (cb === null || ch === null || hy === null || hr === null){ toast("Toutes les valeurs sont requises."); return; }
   if (cb >= ch){ toast("La cible basse doit être inférieure à la cible haute."); return; }
+  var nais = $("#s-naissance").value.trim();
+  if (nais){
+    var iso = naissanceISO(nais);
+    if (!iso){ toast("Date de naissance attendue au format JJ/MM/AAAA."); return; }
+    r.naissance = iso;
+  } else { r.naissance = ""; }
   r.nom = $("#s-nom").value.trim();
   r.cibleBas = versMg(cb); r.cibleHaut = versMg(ch);
   r.hypo = versMg(hy); r.hyper = versMg(hr);
@@ -1196,7 +1243,7 @@ function rendreRapport(){
   var e = el("div","carte");
   var t = el("h2", null, "Rapport de suivi glycémique");
   t.style.fontSize = "18px"; e.appendChild(t);
-  var st = el("div","quand", (etat.reglages.nom ? etat.reglages.nom + " · " : "") +
+  var st = el("div","quand", (identiteRapport() ? identiteRapport() + " · " : "") +
     new Date(l[0].ts).toLocaleDateString("fr-FR") + " au " + new Date(l[l.length-1].ts).toLocaleDateString("fr-FR") +
     " · " + pluriel(l.length, "mesure") + " sur " + pluriel(jours, "jour"));
   st.style.marginBottom = "12px"; e.appendChild(st);
@@ -1386,7 +1433,8 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   // en-tête
   t.texte("Rapport de suivi glycémique", x0, y, 17, true);
   y -= 16;
-  t.texte((r.nom ? r.nom + "  ·  " : "") + d1.toLocaleDateString("fr-FR") + " au " + d2.toLocaleDateString("fr-FR") +
+  var ident = identiteRapport();
+  t.texte((ident ? ident + "  ·  " : "") + d1.toLocaleDateString("fr-FR") + " au " + d2.toLocaleDateString("fr-FR") +
           "  ·  " + pluriel(l.length, "mesure") + " sur " + pluriel(joursCouverts, "jour") + " de relevé", x0, y, 9, false, G);
   y -= 12;
   t.couleur(TRAIT, true).ligne(x0, y, x1, y, 0.8);
