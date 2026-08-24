@@ -210,6 +210,8 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .ligne-plage .piste{background:#EFF1F6!important;border:1px solid #D9DEE8}
   header,nav,.fab,.non-imprimable,.voile,.feuille{display:none!important}
   body{background:#fff;padding:0}
   .carte{break-inside:avoid;border-color:#ccc}
@@ -220,7 +222,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.7</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.8</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -330,7 +332,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.7 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.8 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -776,11 +778,7 @@ function rendrePeriodes(){
 }
 
 /* ============ graphique ============ */
-function rendreGraphe(){
-  var c = $("#graphe"); c.innerHTML = "";
-  var l = surPeriode(periode);
-  if (l.length < 2){ c.appendChild(el("div","vide","Au moins deux mesures sont nécessaires pour tracer la courbe.")); return; }
-
+function grapheSVG(l){
   var W = 340, H = 190, mg = 30, mb = 22, ml = 30, mr = 6;
   var r = etat.reglages;
   var vals = l.map(function(m){ return m.mg; });
@@ -807,7 +805,14 @@ function rendreGraphe(){
   s += '<text x="'+ml+'" y="'+(H-6)+'" font-size="9" fill="#69748F" font-family="IBM Plex Mono,monospace">'+jourCourt(t0)+'</text>';
   s += '<text x="'+(W-mr)+'" y="'+(H-6)+'" font-size="9" fill="#69748F" text-anchor="end" font-family="IBM Plex Mono,monospace">'+jourCourt(t1)+'</text>';
   s += '</svg>';
-  c.innerHTML = s;
+  return s;
+}
+
+function rendreGraphe(){
+  var c = $("#graphe"); c.innerHTML = "";
+  var l = surPeriode(periode);
+  if (l.length < 2){ c.appendChild(el("div","vide","Au moins deux mesures sont nécessaires pour tracer la courbe.")); return; }
+  c.innerHTML = grapheSVG(l);
 }
 
 var TRANCHES = [
@@ -1242,30 +1247,15 @@ function rendreRapport(){
   });
   c.appendChild(rep);
 
-  var det = el("div","carte");
-  det.appendChild(el("div","titre-bloc","Détail des mesures"));
-  var t2 = document.createElement("table");
-  var th = document.createElement("tr");
-  ["Date","Heure","Glyc.","Contexte","Insuline","Gluc."].forEach(function(x){
-    var h = document.createElement("th"); h.textContent = x; th.appendChild(h);
-  });
-  t2.appendChild(th);
-  l.forEach(function(m){
-    var r = document.createElement("tr");
-    var cells = [
-      jourCourt(m.ts), heure(m.ts), affiche(m.mg), m.contexte,
-      ((m.rapide||0)+(m.lente||0)) ? ((m.rapide||0)+(m.lente||0)) + " U" : "—",
-      m.glucides ? m.glucides + " g" : "—"
-    ];
-    cells.forEach(function(x, ix){
-      var d = document.createElement("td"); d.textContent = x;
-      if (ix === 2) d.style.color = COULEUR[classe(m.mg)];
-      r.appendChild(d);
-    });
-    t2.appendChild(r);
-  });
-  det.appendChild(t2);
-  c.appendChild(det);
+  if (l.length >= 2){
+    var gr = el("div","carte");
+    gr.appendChild(el("div","titre-bloc","Courbe de la période"));
+    var boite = el("div");
+    boite.innerHTML = grapheSVG(l);
+    gr.appendChild(boite);
+    gr.appendChild(el("div","avis","Bande verte : plage cible " + affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite() + ". Ligne rouge : seuil d'hypoglycémie."));
+    c.appendChild(gr);
+  }
 }
 $("#btn-rapport").addEventListener("click", rendreRapport);
 $("#btn-imprimer").addEventListener("click", function(){ rendreRapport(); setTimeout(function(){ window.print(); }, 250); });
