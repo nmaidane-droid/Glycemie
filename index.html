@@ -147,6 +147,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--indigo);outline-
 .puces button.actif{background:var(--indigo);border-color:var(--indigo);color:#fff}
 .gros{width:100%;padding:14px;border-radius:12px;background:var(--indigo);color:#fff;font-weight:600;font-size:15px}
 .gros.secondaire{background:var(--surface);color:var(--encre);border:1px solid var(--trait)}
+.gros.secondaire.choisi{background:var(--indigo);color:#fff;border-color:var(--indigo);box-shadow:0 3px 10px rgba(61,59,209,.28)}
 .gros.danger{background:var(--surface);color:var(--bas);border:1px solid rgba(229,72,77,.4)}
 .gros+.gros{margin-top:9px}
 .aide{font-size:12px;color:var(--ardoise);margin-top:6px}
@@ -222,7 +223,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.3</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.4</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -277,9 +278,9 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
         <div class="champ"><label for="rap-debut">Du</label><input type="date" id="rap-debut"></div>
         <div class="champ"><label for="rap-fin">Au</label><input type="date" id="rap-fin"></div>
       </div>
-      <button class="gros" id="btn-envoyer">Envoyer le PDF</button>
-      <button class="gros secondaire" id="btn-imprimer">Imprimer</button>
-      <button class="gros secondaire" id="btn-rapport">Afficher à l'écran</button>
+      <button class="gros secondaire choix" id="btn-envoyer">Envoyer le PDF</button>
+      <button class="gros secondaire choix" id="btn-imprimer">Imprimer</button>
+      <button class="gros secondaire choix" id="btn-rapport">Afficher à l'écran</button>
       <div class="aide">Période de 90 jours par défaut, modifiable ci-dessus. Le PDF s'envoie par WhatsApp, e-mail ou tout autre application.</div>
     </div>
     <div id="rapport"></div>
@@ -335,7 +336,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.3 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.4 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -813,13 +814,14 @@ function rendrePeriodes(){
 }
 
 /* ============ graphique ============ */
-function grapheSVG(l){
+function grapheSVG(l, bornes){
   var W = 340, H = 190, mg = 30, mb = 22, ml = 30, mr = 6;
   var r = etat.reglages;
   var vals = l.map(function(m){ return m.mg; });
   var vmin = Math.min.apply(null, vals.concat([r.cibleBas])) * 0.85;
   var vmax = Math.max.apply(null, vals.concat([r.cibleHaut])) * 1.12;
-  var t0 = l[0].ts, t1 = l[l.length-1].ts; if (t1 === t0) t1 = t0 + 1;
+  var t0 = bornes ? bornes[0] : l[0].ts, t1 = bornes ? bornes[1] : l[l.length-1].ts;
+  if (t1 <= t0) t1 = t0 + 1;
 
   function X(t){ return ml + (t-t0)/(t1-t0) * (W-ml-mr); }
   function Y(v){ return mg + (1-(v-vmin)/(vmax-vmin)) * (H-mg-mb); }
@@ -1228,8 +1230,8 @@ $("#btn-vider").addEventListener("click", function(){
 
 /* ============ rapport ============ */
 function rendreRapport(){
-  var d1 = $("#rap-debut").value ? new Date($("#rap-debut").value + "T00:00").getTime() : 0;
   var d2 = $("#rap-fin").value ? new Date($("#rap-fin").value + "T23:59").getTime() : Date.now();
+  var d1 = $("#rap-debut").value ? new Date($("#rap-debut").value + "T00:00").getTime() : (d2 - 89*86400000);
   var l = etat.mesures.filter(function(m){ return m.ts >= d1 && m.ts <= d2; }).sort(function(a,b){ return a.ts-b.ts; });
   var c = $("#rapport"); c.innerHTML = "";
   if (!l.length){ c.appendChild(el("div","vide","Aucune mesure sur cette période.")); return; }
@@ -1238,14 +1240,16 @@ function rendreRapport(){
   var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
   var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
-  var jours = Math.max(1, Math.round((l[l.length-1].ts - l[0].ts)/86400000) + 1);
+  var vusJours = {};
+  l.forEach(function(m){ vusJours[new Date(m.ts).toDateString()] = 1; });
+  var jours = Math.max(1, Object.keys(vusJours).length);
 
   var e = el("div","carte");
   var t = el("h2", null, "Rapport de suivi glycémique");
   t.style.fontSize = "18px"; e.appendChild(t);
   var st = el("div","quand", (identiteRapport() ? identiteRapport() + " · " : "") +
-    new Date(l[0].ts).toLocaleDateString("fr-FR") + " au " + new Date(l[l.length-1].ts).toLocaleDateString("fr-FR") +
-    " · " + pluriel(l.length, "mesure") + " sur " + pluriel(jours, "jour"));
+    new Date(d1).toLocaleDateString("fr-FR") + " au " + new Date(d2).toLocaleDateString("fr-FR") +
+    " · " + pluriel(l.length, "mesure") + " sur " + pluriel(jours, "jour") + " de relevé");
   st.style.marginBottom = "12px"; e.appendChild(st);
 
   var tb = document.createElement("table");
@@ -1258,7 +1262,7 @@ function rendreRapport(){
   tr("Glycémie moyenne", affiche(moy) + " " + unite());
   tr("GMI de la période", pourcent(3.31 + 0.02392*moy));
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
-  tr("Mesures par jour", (l.length/jours).toFixed(1).replace(".",","));
+  tr("Mesures par jour relevé", (l.length/jours).toFixed(1).replace(".",","));
   if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
   e.appendChild(tb);
   c.appendChild(e);
@@ -1276,7 +1280,7 @@ function rendreRapport(){
   var rep = el("div","carte");
   rep.appendChild(el("div","titre-bloc","Répartition des glycémies"));
   rep.appendChild(el("div","quand", pluriel(l.length, "mesure") + " · du " +
-    new Date(l[0].ts).toLocaleDateString("fr-FR") + " au " + new Date(l[l.length-1].ts).toLocaleDateString("fr-FR")));
+    new Date(d1).toLocaleDateString("fr-FR") + " au " + new Date(d2).toLocaleDateString("fr-FR")));
   plages.forEach(function(p){
     var n = cpt[p.cle], pc = Math.round(n/l.length*100);
     var ln = el("div","ligne-plage");
@@ -1300,12 +1304,18 @@ function rendreRapport(){
     var gr = el("div","carte");
     gr.appendChild(el("div","titre-bloc","Courbe de la période"));
     var boite = el("div");
-    boite.innerHTML = grapheSVG(l);
+    boite.innerHTML = grapheSVG(l, [d1, d2]);
     gr.appendChild(boite);
     gr.appendChild(el("div","avis","Bande verte : plage cible " + affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite() + ". Ligne rouge : seuil d'hypoglycémie."));
     c.appendChild(gr);
   }
 }
+function marquerChoix(bouton){
+  document.querySelectorAll(".choix").forEach(function(b){ b.classList.toggle("choisi", b === bouton); });
+}
+document.querySelectorAll(".choix").forEach(function(b){
+  b.addEventListener("click", function(){ marquerChoix(b); });
+});
 $("#btn-rapport").addEventListener("click", rendreRapport);
 $("#btn-imprimer").addEventListener("click", function(){ rendreRapport(); setTimeout(function(){ window.print(); }, 250); });
 
