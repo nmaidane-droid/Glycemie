@@ -238,7 +238,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v4.3</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v4.6</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -255,7 +255,12 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     <div class="grille" id="bloc-stats"></div>
 
     <div class="carte" style="margin-top:14px">
-      <div class="titre-bloc">Moyennes par zone</div>
+      <div class="titre-bloc">Période analysée</div>
+      <div class="periodes" id="periodes"></div>
+    </div>
+
+    <div class="carte">
+      <div class="titre-bloc">Répartition par zone</div>
       <div class="colonnes" id="tir-colonnes"></div>
       <div class="zones" id="tir-zones"></div>
       <div class="avis" id="tir-note"></div>
@@ -263,7 +268,6 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 
     <div class="carte">
       <div class="titre-bloc">Courbe des glycémies</div>
-      <div class="periodes" id="periodes"></div>
       <div id="graphe"></div>
     </div>
 
@@ -351,7 +355,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 4.3 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 4.6 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -526,7 +530,7 @@ var etat = {
   activites: [],
   meta: { dernier:0, dernierSecours:0 }
 };
-var periode = 14;
+var periode = 7;
 var filtre = "tous";
 var editionId = null;
 var contexteChoisi = "À jeun";
@@ -894,7 +898,6 @@ function rendreTIR(){
   cols.innerHTML = ""; zones.innerHTML = "";
   var r = etat.reglages;
 
-  // quatre zones seulement : la moyenne de chacune, sans détail
   var groupes = [
     { nom:"Hypo",   couleur:COULEUR.hypo,     test:function(mg){ return mg < r.cibleBas; } },
     { nom:"Normal", couleur:COULEUR.cible,    test:function(mg){ return mg >= r.cibleBas && mg <= r.cibleHaut; } },
@@ -905,18 +908,16 @@ function rendreTIR(){
   groupes.forEach(function(g){
     var s = l.filter(function(m){ return g.test(m.mg); });
     g.n = s.length;
+    g.part = l.length ? s.length/l.length*100 : 0;
     g.moy = s.length ? moyenne(s) : null;
   });
 
-  var plafond = Math.max.apply(null, groupes.map(function(g){ return g.moy || 0; }).concat([r.cibleHaut]));
-  plafond *= 1.12;
-
   groupes.forEach(function(g){
     var c = el("div","col");
-    if (g.moy !== null){
-      c.appendChild(el("div","v", affiche(g.moy))).style.color = g.couleur;
+    if (g.n){
+      c.appendChild(el("div","v", Math.round(g.part) + " %")).style.color = g.couleur;
       var b = el("div","barre");
-      b.style.height = Math.max(4, (g.moy/plafond)*118) + "px";
+      b.style.height = Math.max(4, (g.part/100)*118) + "px";
       b.style.background = g.couleur;
       c.appendChild(b);
     } else {
@@ -927,16 +928,16 @@ function rendreTIR(){
 
     var z = el("div");
     z.appendChild(el("b", null, g.nom));
-    z.appendChild(document.createTextNode(g.n ? pluriel(g.n, "mesure") : "aucune"));
+    z.appendChild(document.createTextNode(g.n ? pluriel(g.n, "mesure") + " · moy " + affiche(g.moy) : "aucune"));
     zones.appendChild(z);
   });
 
   if (!l.length){
-    $("#tir-note").textContent = "Enregistrez des mesures pour voir les moyennes par zone.";
+    $("#tir-note").textContent = "Enregistrez des mesures pour voir la répartition sur cette période.";
     return;
   }
-  $("#tir-note").textContent = "Moyenne de chaque zone sur les " + periode + " derniers jours, en " + unite() +
-    ". Le détail chiffré figure dans le rapport.";
+  $("#tir-note").textContent = "Part des mesures dans chaque zone sur les " + periode + " derniers jours. " +
+    "L'objectif pour la zone normale est fixé avec votre médecin, souvent au moins 70 %.";
 }
 
 function rendrePeriodes(){
