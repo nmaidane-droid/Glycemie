@@ -150,6 +150,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--indigo);outline-
 .gros.secondaire{background:var(--surface);color:var(--encre);border:1px solid var(--trait)}
 .gros.secondaire.choisi{background:var(--indigo);color:#fff;border-color:var(--indigo);box-shadow:0 3px 10px rgba(61,59,209,.28)}
 .gros.danger{background:var(--surface);color:var(--bas);border:1px solid rgba(229,72,77,.4)}
+.gros.secondaire.presse{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.gros.danger.presse{background:var(--bas);color:#fff;border-color:var(--bas)}
 .gros+.gros{margin-top:9px}
 .aide{font-size:12px;color:var(--ardoise);margin-top:6px}
 
@@ -227,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.4</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.5</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -336,16 +338,15 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     <div class="carte">
       <div class="titre-bloc">Vos données</div>
       <div class="avis" id="etat-sauvegarde" style="margin:0 0 14px"></div>
-      <button class="gros secondaire" id="btn-csv">Exporter en CSV (tableur)</button>
       <button class="gros secondaire" id="btn-json">Sauvegarder (fichier JSON)</button>
       <button class="gros secondaire" id="btn-import">Restaurer une sauvegarde</button>
-      <input type="file" id="fichier-import" accept=".json,application/json" hidden>
       <button class="gros danger" id="btn-vider">Effacer toutes les mesures</button>
+      <input type="file" id="fichier-import" accept=".json,application/json" hidden>
       <div class="aide">Tout reste sur cet appareil, dans deux stockages distincts. Rien n'est envoyé sur un serveur — d'où l'importance du fichier de secours si vous changez de téléphone.</div>
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.4 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.5 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1302,21 +1303,17 @@ function telecharger(nom, contenu, type){
   a.href = u; a.download = nom; document.body.appendChild(a); a.click();
   setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); }, 400);
 }
-$("#btn-csv").addEventListener("click", function(){
-  var l = etat.mesures.slice().sort(function(a,b){ return a.ts-b.ts; });
-  if (!l.length){ toast("Aucune mesure à exporter."); return; }
-  var lignes = ["Date;Heure;Glycemie ("+unite()+");Contexte;Insuline rapide (U);Insuline lente (U);Glucides (g);Traitement;Note"];
-  l.forEach(function(m){
-    var d = new Date(m.ts);
-    lignes.push([
-      d.toLocaleDateString("fr-FR"), heure(m.ts), affiche(m.mg), m.contexte,
-      m.rapide||"", m.lente||"", m.glucides||"",
-      (m.medic||"").replace(/;/g,","), (m.note||"").replace(/;/g,",")
-    ].join(";"));
-  });
-  telecharger("glycemie-mesures.csv", "\uFEFF"+lignes.join("\r\n"), "text/csv;charset=utf-8");
-  toast("CSV exporté");
+// le bouton reste coloré 3 secondes après l'appui, pour confirmer l'action
+function marquerPresse(bouton){
+  bouton.classList.add("presse");
+  clearTimeout(bouton._presse);
+  bouton._presse = setTimeout(function(){ bouton.classList.remove("presse"); }, 3000);
+}
+["btn-json","btn-import","btn-vider"].forEach(function(ident){
+  var b = $("#" + ident);
+  b.addEventListener("click", function(){ marquerPresse(b); });
 });
+
 $("#btn-json").addEventListener("click", exporterSecours);
 $("#btn-secours").addEventListener("click", exporterSecours);
 $("#btn-import").addEventListener("click", function(){ $("#fichier-import").click(); });
