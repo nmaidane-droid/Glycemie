@@ -212,7 +212,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   .ligne-plage .piste{background:#EFF1F6!important;border:1px solid #D9DEE8}
-  header,nav,.fab,.non-imprimable,.voile,.feuille{display:none!important}
+  header,nav,.fab,.non-imprimable,.voile,.feuille,.fermer-vue{display:none!important}
   body{background:#fff;padding:0}
   .carte{break-inside:avoid;border-color:#ccc}
   main{max-width:none}
@@ -222,7 +222,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.8</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.9</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -332,7 +332,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.8 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.9 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -717,6 +717,7 @@ function estimerHbA1c(){
   };
 }
 function pourcent(v){ return v.toFixed(1).replace(".",",") + " %"; }
+function pluriel(n, mot){ return n + " " + mot + (n > 1 ? "s" : ""); }
 
 function rendreStats(){
   var g = $("#bloc-stats"); g.innerHTML = "";
@@ -739,7 +740,7 @@ function rendreStats(){
   var uni = 0, gluc = 0;
   ajd.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); gluc += (m.glucides||0); });
   stat("Insuline aujourd'hui", uni ? (Math.round(uni*10)/10).toString().replace(".",",")+" U" : "—",
-       gluc ? Math.round(gluc)+" g de glucides notés" : ajd.length+" mesure(s) aujourd'hui");
+       gluc ? Math.round(gluc)+" g de glucides notés" : pluriel(ajd.length, "mesure")+" aujourd'hui");
 }
 
 function rendreTIR(){
@@ -764,7 +765,7 @@ function rendreTIR(){
     leg.appendChild(s);
   });
   var enCible = Math.round(cpt.cible/l.length*100);
-  $("#tir-note").textContent = "Sur " + l.length + " mesures des " + periode + " derniers jours : " + enCible +
+  $("#tir-note").textContent = "Sur " + pluriel(l.length, "mesure") + " des " + periode + " derniers jours : " + enCible +
     " % dans votre cible. L'objectif est fixé avec votre médecin (souvent au moins 70 %).";
 }
 
@@ -1196,7 +1197,7 @@ function rendreRapport(){
   t.style.fontSize = "18px"; e.appendChild(t);
   var st = el("div","quand", (etat.reglages.nom ? etat.reglages.nom + " · " : "") +
     new Date(l[0].ts).toLocaleDateString("fr-FR") + " au " + new Date(l[l.length-1].ts).toLocaleDateString("fr-FR") +
-    " · " + l.length + " mesures sur " + jours + " jours");
+    " · " + pluriel(l.length, "mesure") + " sur " + pluriel(jours, "jour"));
   st.style.marginBottom = "12px"; e.appendChild(st);
 
   var tb = document.createElement("table");
@@ -1226,7 +1227,7 @@ function rendreRapport(){
   var maxi = Math.max.apply(null, plages.map(function(p){ return cpt[p.cle]; }));
   var rep = el("div","carte");
   rep.appendChild(el("div","titre-bloc","Répartition des glycémies"));
-  rep.appendChild(el("div","quand", l.length + " mesures · du " +
+  rep.appendChild(el("div","quand", pluriel(l.length, "mesure") + " · du " +
     new Date(l[0].ts).toLocaleDateString("fr-FR") + " au " + new Date(l[l.length-1].ts).toLocaleDateString("fr-FR")));
   plages.forEach(function(p){
     var n = cpt[p.cle], pc = Math.round(n/l.length*100);
