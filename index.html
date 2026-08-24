@@ -105,6 +105,15 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 svg{display:block;width:100%;height:auto;overflow:visible}
 .vide{color:var(--ardoise);font-size:13.5px;text-align:center;padding:22px 8px}
 
+/* ---------- répartition du rapport ---------- */
+.ligne-plage{display:flex;align-items:center;gap:10px;margin:9px 0}
+.ligne-plage .lab{width:104px;font-size:12.5px;color:var(--ardoise);line-height:1.25}
+.ligne-plage .lab small{font-size:11px}
+.ligne-plage .piste{flex:1;height:16px;background:#F0F2F7;border-radius:5px;overflow:hidden}
+.ligne-plage .piste div{height:100%;border-radius:5px;min-width:2px}
+.ligne-plage .val{width:76px;text-align:right;font-size:12.5px;font-weight:600}
+.ligne-plage .val small{color:var(--ardoise);font-weight:400}
+
 /* ---------- barre de vue ---------- */
 .barre-vue{display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px}
 .barre-vue h2{font-size:20px}
@@ -211,7 +220,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.6</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.7</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -321,7 +330,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.6 — 23/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.7 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1193,18 +1202,45 @@ function rendreRapport(){
     r.appendChild(a); r.appendChild(b); tb.appendChild(r);
   }
   tr("Glycémie moyenne", affiche(moy) + " " + unite());
-  var a1cRap = estimerHbA1c();
-  if (a1cRap.valeur !== null) tr("HbA1c estimée", pourcent(a1cRap.valeur) + " (" + a1cRap.note + ")");
   tr("GMI de la période", pourcent(3.31 + 0.02392*moy));
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
-  tr("Temps dans la cible", Math.round(cpt.cible/l.length*100) + " %");
-  tr("Hypoglycémies", Math.round(cpt.hypo/l.length*100) + " % (" + cpt.hypo + " mesures)");
-  tr("Juste sous la cible", Math.round(cpt.bas/l.length*100) + " % (" + cpt.bas + " mesures)");
-  tr("Au-dessus de la cible", Math.round((cpt.haut+cpt.treshaut)/l.length*100) + " %");
   tr("Mesures par jour", (l.length/jours).toFixed(1).replace(".",","));
   if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
   e.appendChild(tb);
   c.appendChild(e);
+
+  // répartition : une barre par plage, la cible sert d'échelle
+  var rg = etat.reglages;
+  var plages = [
+    { cle:"hypo",     lab:"Moins de " + affiche(rg.hypo) },
+    { cle:"bas",      lab:affiche(rg.hypo) + " – " + affiche(rg.cibleBas - (estMmol() ? 0.1 : 1)) },
+    { cle:"cible",    lab:affiche(rg.cibleBas) + " – " + affiche(rg.cibleHaut), sous:"cible" },
+    { cle:"haut",     lab:affiche(rg.cibleHaut + (estMmol() ? 0.1 : 1)) + " – " + affiche(rg.hyper - (estMmol() ? 0.1 : 1)) },
+    { cle:"treshaut", lab:affiche(rg.hyper) + " et plus" }
+  ];
+  var maxi = Math.max.apply(null, plages.map(function(p){ return cpt[p.cle]; }));
+  var rep = el("div","carte");
+  rep.appendChild(el("div","titre-bloc","Répartition des glycémies"));
+  rep.appendChild(el("div","quand", l.length + " mesures · du " +
+    new Date(l[0].ts).toLocaleDateString("fr-FR") + " au " + new Date(l[l.length-1].ts).toLocaleDateString("fr-FR")));
+  plages.forEach(function(p){
+    var n = cpt[p.cle], pc = Math.round(n/l.length*100);
+    var ln = el("div","ligne-plage");
+    var lab = el("div","lab");
+    lab.appendChild(document.createTextNode(p.lab));
+    if (p.sous){ lab.appendChild(document.createElement("br")); var s = el("small", null, p.sous); lab.appendChild(s); }
+    var piste = el("div","piste");
+    var barre = el("div");
+    barre.style.width = (maxi ? (n/maxi*100) : 0) + "%";
+    barre.style.background = COULEUR[p.cle];
+    piste.appendChild(barre);
+    var val = el("div","val");
+    val.appendChild(document.createTextNode(pc + " % "));
+    val.appendChild(el("small", null, "· " + n));
+    ln.appendChild(lab); ln.appendChild(piste); ln.appendChild(val);
+    rep.appendChild(ln);
+  });
+  c.appendChild(rep);
 
   var det = el("div","carte");
   det.appendChild(el("div","titre-bloc","Détail des mesures"));
