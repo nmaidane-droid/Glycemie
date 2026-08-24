@@ -83,8 +83,9 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 .couloir .seg{position:absolute;top:0;bottom:0}
 .couloir .seg.cible{box-shadow:inset 1.5px 0 0 #fff,inset -1.5px 0 0 #fff}
 .couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:4px;background:#fff;border-radius:3px;box-shadow:0 0 0 1.5px var(--encre);transition:left .4s cubic-bezier(.2,.8,.2,1)}
-.couloir-reperes{position:relative;height:14px;font-size:10px;line-height:14px;color:var(--ardoise);margin-top:14px}
+.couloir-reperes{position:relative;height:19px;font-size:10px;line-height:14px;color:var(--ardoise);margin-top:14px}
 .couloir-reperes span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
+.couloir-reperes .trait-repere{position:absolute;bottom:-2px;width:1px;height:5px;background:#C9CFDC;transform:translateX(-50%)}
 .couloir-legende{position:relative;height:15px;font-size:10.5px;color:var(--ardoise);margin-top:6px}
 .couloir-legende span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
 .couloir-legende span.bord-g{transform:none;left:0}
@@ -229,7 +230,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.2</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.3</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -347,7 +348,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.2 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.3 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -669,7 +670,10 @@ function rendreDerniere(){
     var s = el("span", null, affiche(p[1]));
     s.style.left = pct(p[1]) + "%";
     reperes.appendChild(s);
-    marques.push({ el:s, cible:pct(p[1]), rang:p[0] });
+    var trait = el("i","trait-repere");
+    trait.style.left = pct(p[1]) + "%";
+    reperes.appendChild(trait);
+    marques.push({ el:s, trait:trait, cible:pct(p[1]), rang:p[0] });
   });
   b.appendChild(reperes);
   ecarterReperes(reperes, marques);
@@ -790,39 +794,46 @@ function identiteRapport(){
 }
 function pluriel(n, mot){ return n + " " + mot + (n > 1 ? "s" : ""); }
 
-// tous les seuils restent sur une seule ligne, centrés sur leur frontière :
-// on réduit la taille du texte tant qu'il le faut, et en dernier recours on masque le seuil le moins utile
+// une seule ligne, un trait sous chaque nombre pour matérialiser l'alignement,
+// et fusion "60/70" quand deux seuils sont trop proches pour tenir côte à côte
 function ecarterReperes(boite, marques){
   var W = boite.clientWidth;
   if (!W || !marques.length) return;
-  var ESPACE = 3;
+  var ESPACE = 4;
 
-  function placer(){
-    marques.forEach(function(m){
+  function poser(liste){
+    liste.forEach(function(m){
       m.demi = m.el.offsetWidth/2;
       m.x = Math.min(W - m.demi, Math.max(m.demi, m.cible/100 * W));
       m.el.style.left = m.x.toFixed(1) + "px";
-      m.el.style.top = "0";
     });
   }
-  function chevauche(){
-    var visibles = marques.filter(function(m){ return !m.el.hidden; });
-    for (var i=1; i<visibles.length; i++){
-      if (visibles[i].x - visibles[i].demi < visibles[i-1].x + visibles[i-1].demi + ESPACE) return true;
+  function serre(liste){
+    for (var i=1; i<liste.length; i++){
+      if (liste[i].x - liste[i].demi < liste[i-1].x + liste[i-1].demi + ESPACE) return i;
     }
-    return false;
+    return -1;
   }
 
-  marques.forEach(function(m){ m.el.hidden = false; });
-  var tailles = [10, 9.5, 9, 8.5, 8];
+  var liste = marques.slice();
+  var tailles = [10, 9.5, 9, 8.5];
   for (var t = 0; t < tailles.length; t++){
     boite.style.fontSize = tailles[t] + "px";
-    placer();
-    if (!chevauche()) return;
+    poser(liste);
+    if (serre(liste) === -1) return;
   }
-  // toujours trop serré : on sacrifie le seuil d'hypoglycémie, déjà rappelé sous la barre
-  var sacrifiable = marques.filter(function(m){ return m.rang === "hypo"; })[0];
-  if (sacrifiable){ sacrifiable.el.hidden = true; placer(); }
+
+  // toujours trop serré : on fusionne le couple fautif en un seul repère
+  var i = serre(liste);
+  if (i > 0){
+    var g = liste[i-1], d2 = liste[i];
+    g.el.textContent = g.el.textContent + "/" + d2.el.textContent;
+    g.cible = (g.cible + d2.cible)/2;
+    d2.el.remove();
+    if (d2.trait) d2.trait.style.opacity = "1";
+    liste.splice(i, 1);
+    poser(liste);
+  }
 }
 
 function rendreStats(){
@@ -1396,8 +1407,7 @@ function rendreRapport(){
   // répartition : une barre par plage, la cible sert d'échelle
   var rep = el("div","carte");
   rep.appendChild(el("div","titre-bloc","Répartition des glycémies"));
-  rep.appendChild(el("div","quand", pluriel(l.length, "mesure") + " · du " +
-    new Date(d1).toLocaleDateString("fr-FR") + " au " + new Date(d2).toLocaleDateString("fr-FR")));
+  rep.appendChild(el("div","quand", pluriel(l.length, "mesure") + " sur la période"));
   var boiteCols = el("div","colonnes"), boiteZones = el("div","zones");
   rendreColonnes(boiteCols, boiteZones, l, true);
   rep.appendChild(boiteCols);
@@ -1649,8 +1659,7 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   cy = haut2 - P - 8;
   t.texteEspace("RÉPARTITION DES GLYCÉMIES", X0 + P, cy, 8.25, true, ARDOISE, 1.05);
   cy -= 13;
-  t.texte(pluriel(l.length, "mesure") + " · du " + d1.toLocaleDateString("fr-FR") +
-          " au " + d2.toLocaleDateString("fr-FR"), X0 + P, cy, 9, false, ARDOISE);
+  t.texte(pluriel(l.length, "mesure") + " sur la période", X0 + P, cy, 9, false, ARDOISE);
   cy -= 16;
 
   var nbz = 5, gap = 9;
