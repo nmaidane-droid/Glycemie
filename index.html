@@ -110,6 +110,16 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 svg{display:block;width:100%;height:auto;overflow:visible}
 .vide{color:var(--ardoise);font-size:13.5px;text-align:center;padding:22px 8px}
 
+/* ---------- moyennes par zone (tableau de bord) ---------- */
+.colonnes{display:flex;align-items:flex-end;gap:10px;height:158px;margin-bottom:8px}
+.col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.col .v{font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:700;margin-bottom:5px}
+.col .barre{width:100%;border-radius:9px 9px 0 0;min-height:3px}
+.col .vide-col{width:100%;height:3px;border-radius:2px;background:var(--trait)}
+.zones{display:flex;gap:10px}
+.zones div{flex:1;text-align:center;font-size:11.5px;color:var(--ardoise);line-height:1.3}
+.zones div b{display:block;color:var(--encre);font-weight:600;font-size:12px}
+
 /* ---------- répartition du rapport ---------- */
 .ligne-plage{display:flex;align-items:center;gap:10px;margin:9px 0}
 .ligne-plage .lab{width:104px;font-size:12.5px;color:var(--ardoise);line-height:1.25}
@@ -228,7 +238,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v4.1</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v4.3</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -245,9 +255,9 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     <div class="grille" id="bloc-stats"></div>
 
     <div class="carte" style="margin-top:14px">
-      <div class="titre-bloc">Temps dans la cible</div>
-      <div class="tir" id="tir-barre"></div>
-      <div class="tir-legende" id="tir-legende"></div>
+      <div class="titre-bloc">Moyennes par zone</div>
+      <div class="colonnes" id="tir-colonnes"></div>
+      <div class="zones" id="tir-zones"></div>
       <div class="avis" id="tir-note"></div>
     </div>
 
@@ -341,7 +351,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 4.1 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 4.3 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -837,30 +847,96 @@ function rendreStats(){
        gluc ? Math.round(gluc)+" g de glucides notés" : pluriel(ajd.length, "mesure")+" aujourd'hui");
 }
 
-function rendreTIR(){
-  var l = surPeriode(periode);
-  var barre = $("#tir-barre"), leg = $("#tir-legende");
-  barre.innerHTML = ""; leg.innerHTML = "";
+function definitionPlages(){
+  var rg = etat.reglages, pas = estMmol() ? 0.1 : 1;
+  return [
+    { cle:"hypo",     lab:"Moins de " + affiche(rg.hypo) },
+    { cle:"bas",      lab:affiche(rg.hypo) + " – " + affiche(rg.cibleBas - pas) },
+    { cle:"cible",    lab:affiche(rg.cibleBas) + " – " + affiche(rg.cibleHaut), sous:"cible" },
+    { cle:"haut",     lab:affiche(rg.cibleHaut + pas) + " – " + affiche(rg.hyper - pas) },
+    { cle:"treshaut", lab:affiche(rg.hyper) + " et plus" }
+  ];
+}
+
+// barres de répartition, identiques au tableau de bord et au rapport
+function rendrePlages(conteneur, l){
+  conteneur.innerHTML = "";
   if (!l.length){
-    $("#tir-note").textContent = "Enregistrez des mesures pour voir la répartition.";
-    var d = el("div"); d.style.width="100%"; d.style.background="var(--trait)"; barre.appendChild(d);
+    conteneur.appendChild(el("div","vide","Aucune mesure sur cette période."));
     return;
   }
   var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
-  PLAGES.forEach(function(k){
-    var p = cpt[k]/l.length*100;
-    if (p > 0){ var d = el("div"); d.style.width = p+"%"; d.style.background = COULEUR[k]; barre.appendChild(d); }
-    var s = el("span");
-    var pt = el("i","pastille"); pt.style.background = COULEUR[k];
-    s.appendChild(pt);
-    s.appendChild(el("b",null, Math.round(p)+"%"));
-    s.appendChild(document.createTextNode(" " + LIBELLE[k].toLowerCase()));
-    leg.appendChild(s);
+  var plages = definitionPlages();
+  var maxi = Math.max.apply(null, plages.map(function(p){ return cpt[p.cle]; }));
+  plages.forEach(function(p){
+    var n = cpt[p.cle], pc = Math.round(n/l.length*100);
+    var ln = el("div","ligne-plage");
+    var lab = el("div","lab");
+    lab.appendChild(document.createTextNode(p.lab));
+    if (p.sous){ lab.appendChild(document.createElement("br")); lab.appendChild(el("small", null, p.sous)); }
+    var piste = el("div","piste");
+    var barre = el("div");
+    barre.style.width = (maxi ? (n/maxi*100) : 0) + "%";
+    barre.style.background = COULEUR[p.cle];
+    piste.appendChild(barre);
+    var val = el("div","val");
+    val.appendChild(document.createTextNode(pc + " % "));
+    val.appendChild(el("small", null, "· " + n));
+    ln.appendChild(lab); ln.appendChild(piste); ln.appendChild(val);
+    conteneur.appendChild(ln);
   });
-  var enCible = Math.round(cpt.cible/l.length*100);
-  $("#tir-note").textContent = "Sur " + pluriel(l.length, "mesure") + " des " + periode + " derniers jours : " + enCible +
-    " % dans votre cible. L'objectif est fixé avec votre médecin (souvent au moins 70 %).";
+}
+
+function rendreTIR(){
+  var l = surPeriode(periode);
+  var cols = $("#tir-colonnes"), zones = $("#tir-zones");
+  cols.innerHTML = ""; zones.innerHTML = "";
+  var r = etat.reglages;
+
+  // quatre zones seulement : la moyenne de chacune, sans détail
+  var groupes = [
+    { nom:"Hypo",   couleur:COULEUR.hypo,     test:function(mg){ return mg < r.cibleBas; } },
+    { nom:"Normal", couleur:COULEUR.cible,    test:function(mg){ return mg >= r.cibleBas && mg <= r.cibleHaut; } },
+    { nom:"Élevé",  couleur:COULEUR.haut,     test:function(mg){ return mg > r.cibleHaut && mg < r.hyper; } },
+    { nom:"Alerte", couleur:COULEUR.treshaut, test:function(mg){ return mg >= r.hyper; } }
+  ];
+
+  groupes.forEach(function(g){
+    var s = l.filter(function(m){ return g.test(m.mg); });
+    g.n = s.length;
+    g.moy = s.length ? moyenne(s) : null;
+  });
+
+  var plafond = Math.max.apply(null, groupes.map(function(g){ return g.moy || 0; }).concat([r.cibleHaut]));
+  plafond *= 1.12;
+
+  groupes.forEach(function(g){
+    var c = el("div","col");
+    if (g.moy !== null){
+      c.appendChild(el("div","v", affiche(g.moy))).style.color = g.couleur;
+      var b = el("div","barre");
+      b.style.height = Math.max(4, (g.moy/plafond)*118) + "px";
+      b.style.background = g.couleur;
+      c.appendChild(b);
+    } else {
+      c.appendChild(el("div","v","—")).style.color = "var(--trait)";
+      c.appendChild(el("div","vide-col"));
+    }
+    cols.appendChild(c);
+
+    var z = el("div");
+    z.appendChild(el("b", null, g.nom));
+    z.appendChild(document.createTextNode(g.n ? pluriel(g.n, "mesure") : "aucune"));
+    zones.appendChild(z);
+  });
+
+  if (!l.length){
+    $("#tir-note").textContent = "Enregistrez des mesures pour voir les moyennes par zone.";
+    return;
+  }
+  $("#tir-note").textContent = "Moyenne de chaque zone sur les " + periode + " derniers jours, en " + unite() +
+    ". Le détail chiffré figure dans le rapport.";
 }
 
 function rendrePeriodes(){
@@ -1339,36 +1415,13 @@ function rendreRapport(){
   c.appendChild(e);
 
   // répartition : une barre par plage, la cible sert d'échelle
-  var rg = etat.reglages;
-  var plages = [
-    { cle:"hypo",     lab:"Moins de " + affiche(rg.hypo) },
-    { cle:"bas",      lab:affiche(rg.hypo) + " – " + affiche(rg.cibleBas - (estMmol() ? 0.1 : 1)) },
-    { cle:"cible",    lab:affiche(rg.cibleBas) + " – " + affiche(rg.cibleHaut), sous:"cible" },
-    { cle:"haut",     lab:affiche(rg.cibleHaut + (estMmol() ? 0.1 : 1)) + " – " + affiche(rg.hyper - (estMmol() ? 0.1 : 1)) },
-    { cle:"treshaut", lab:affiche(rg.hyper) + " et plus" }
-  ];
-  var maxi = Math.max.apply(null, plages.map(function(p){ return cpt[p.cle]; }));
   var rep = el("div","carte");
   rep.appendChild(el("div","titre-bloc","Répartition des glycémies"));
   rep.appendChild(el("div","quand", pluriel(l.length, "mesure") + " · du " +
     new Date(d1).toLocaleDateString("fr-FR") + " au " + new Date(d2).toLocaleDateString("fr-FR")));
-  plages.forEach(function(p){
-    var n = cpt[p.cle], pc = Math.round(n/l.length*100);
-    var ln = el("div","ligne-plage");
-    var lab = el("div","lab");
-    lab.appendChild(document.createTextNode(p.lab));
-    if (p.sous){ lab.appendChild(document.createElement("br")); var s = el("small", null, p.sous); lab.appendChild(s); }
-    var piste = el("div","piste");
-    var barre = el("div");
-    barre.style.width = (maxi ? (n/maxi*100) : 0) + "%";
-    barre.style.background = COULEUR[p.cle];
-    piste.appendChild(barre);
-    var val = el("div","val");
-    val.appendChild(document.createTextNode(pc + " % "));
-    val.appendChild(el("small", null, "· " + n));
-    ln.appendChild(lab); ln.appendChild(piste); ln.appendChild(val);
-    rep.appendChild(ln);
-  });
+  var boitePlages = el("div");
+  rendrePlages(boitePlages, l);
+  rep.appendChild(boitePlages);
   c.appendChild(rep);
 
   var jourMoy = moyennesJournalieres(l);
