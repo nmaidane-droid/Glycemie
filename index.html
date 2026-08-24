@@ -229,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.5</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.6</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -343,7 +343,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.5 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.6 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1347,6 +1347,7 @@ $("#btn-vider").addEventListener("click", function(){
 /* ============ rapport ============ */
 function rendreRapport(){
   var f = fenetreRapport(), d1 = f[0], d2 = f[1];
+  var joursFenetre = Math.max(1, Math.round((d2 - d1)/86400000));
   var l = etat.mesures.filter(function(m){ return m.ts >= d1 && m.ts <= d2; }).sort(function(a,b){ return a.ts-b.ts; });
   var c = $("#rapport"); c.innerHTML = "";
   if (!l.length){ c.appendChild(el("div","vide","Aucune mesure sur cette période.")); return; }
@@ -1392,7 +1393,6 @@ function rendreRapport(){
   rep.appendChild(boiteZones);
   c.appendChild(rep);
 
-  var joursFenetre = Math.max(1, Math.round((d2 - d1)/86400000));
   var jourMoy = moyennesJournalieres(l);
   if (jourMoy.length >= 1){
     var gr = el("div","carte");
@@ -1581,6 +1581,7 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
   var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
   var d1 = new Date(debutFenetre), d2 = new Date(finFenetre);
+  var joursFenetre = Math.max(1, Math.round((finFenetre - debutFenetre)/86400000));
   var vus = {};
   l.forEach(function(m){ vus[new Date(m.ts).toDateString()] = 1; });
   var joursReleves = Math.max(1, Object.keys(vus).length);
@@ -1658,7 +1659,6 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   t.couleur(CARTE); t.couleur(BORD, true);
   t.rectArrondi(X0, haut3 - hCourbe, W, hCourbe, RAYON, true, true);
   cy = haut3 - P - 8;
-  var joursFenetre = Math.max(1, Math.round((finFenetre - debutFenetre)/86400000));
   t.texteEspace(("Glycémie moyenne sur " + pluriel(joursFenetre, "jour")).toUpperCase(), X0 + P, cy, 8.25, true, ARDOISE, 1.05);
   cy -= 14;
 
