@@ -229,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.6</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.7</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -343,7 +343,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.6 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.7 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1085,7 +1085,7 @@ function ligneJournal(i){
 
 function retirer(collection, ident){
   etat[collection] = etat[collection].filter(function(x){ return x.id !== ident; });
-  sauver(); rendreJournal(); rendreSuivi(); toast("Entrée supprimée");
+  sauver(); rendreJournal(); rendreSuivi(); rafraichirRapport(); toast("Entrée supprimée");
 }
 
 /* ============ feuille de saisie ============ */
@@ -1177,7 +1177,7 @@ $("#f-glycemie").addEventListener("submit", function(e){
   };
   if (editionId) etat.mesures = etat.mesures.filter(function(m){ return m.id !== editionId; });
   etat.mesures.push(obj);
-  sauver(); fermerFeuille(); rendreSuivi(); rendreJournal();
+  sauver(); fermerFeuille(); rendreSuivi(); rendreJournal(); rafraichirRapport();
   var c = classe(mg);
   toast(editionId ? "Mesure modifiée" : "Enregistré — " + LIBELLE[c].toLowerCase());
 });
@@ -1256,7 +1256,7 @@ function remplirReglages(){
 }
 $("#s-unite").addEventListener("change", function(){
   etat.reglages.unite = this.value;
-  remplirReglages(); sauver(); rendreSuivi(); rendreJournal();
+  remplirReglages(); sauver(); rendreSuivi(); rendreJournal(); rafraichirRapport();
   majUniteSaisie();
 });
 $("#btn-hba1c").addEventListener("click", function(){
@@ -1267,11 +1267,11 @@ $("#btn-hba1c").addEventListener("click", function(){
   if (new Date(d + "T12:00").getTime() > Date.now()){ toast("La date ne peut pas être dans le futur."); return; }
   etat.reglages.hba1c = v;
   etat.reglages.hba1cDate = d;
-  sauver(); remplirReglages(); rendreSuivi(); toast("HbA1c de départ enregistrée");
+  sauver(); remplirReglages(); rendreSuivi(); rafraichirRapport(); toast("HbA1c de départ enregistrée");
 });
 $("#btn-hba1c-effacer").addEventListener("click", function(){
   etat.reglages.hba1c = null; etat.reglages.hba1cDate = null;
-  sauver(); remplirReglages(); rendreSuivi(); toast("Estimation basée sur vos seules mesures");
+  sauver(); remplirReglages(); rendreSuivi(); rafraichirRapport(); toast("Estimation basée sur vos seules mesures");
 });
 
 $("#s-naissance").addEventListener("input", function(){
@@ -1296,7 +1296,7 @@ $("#btn-reglages").addEventListener("click", function(){
   r.nom = $("#s-nom").value.trim();
   r.cibleBas = versMg(cb); r.cibleHaut = versMg(ch);
   r.hypo = versMg(hy); r.hyper = versMg(hr);
-  sauver(); remplirReglages(); rendreSuivi(); toast("Réglages enregistrés");
+  sauver(); remplirReglages(); rendreSuivi(); rafraichirRapport(); toast("Réglages enregistrés");
 });
 
 /* ============ export / import ============ */
@@ -1332,7 +1332,7 @@ $("#fichier-import").addEventListener("change", function(e){
       etat.reglages = Object.assign(etat.reglages, d.reglages || {});
       etat.mesures = d.mesures; etat.vitaux = d.vitaux || []; etat.activites = d.activites || [];
       etat.meta = Object.assign(etat.meta, d.meta || {});
-      sauver(); remplirReglages(); rendreSuivi(); rendreJournal(); toast("Sauvegarde restaurée");
+      sauver(); remplirReglages(); rendreSuivi(); rendreJournal(); rafraichirRapport(); toast("Sauvegarde restaurée");
     } catch(err){ toast("Fichier illisible : sauvegarde Glycémie attendue."); }
   };
   lecteur.readAsText(f);
@@ -1341,10 +1341,14 @@ $("#fichier-import").addEventListener("change", function(e){
 $("#btn-vider").addEventListener("click", function(){
   if (!confirm("Effacer définitivement toutes les mesures ? Exportez d'abord une sauvegarde si besoin.")) return;
   etat.mesures = []; etat.vitaux = []; etat.activites = [];
-  sauver(); rendreSuivi(); rendreJournal(); toast("Données effacées");
+  sauver(); rendreSuivi(); rendreJournal(); rafraichirRapport(); toast("Données effacées");
 });
 
 /* ============ rapport ============ */
+function rafraichirRapport(){
+  if ($("#rapport").children.length) rendreRapport();
+}
+
 function rendreRapport(){
   var f = fenetreRapport(), d1 = f[0], d2 = f[1];
   var joursFenetre = Math.max(1, Math.round((d2 - d1)/86400000));
