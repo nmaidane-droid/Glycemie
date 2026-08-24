@@ -229,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.9</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.0</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -285,6 +285,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     <div class="barre-vue"><h2>Rapport</h2><button class="fermer-vue" aria-label="Revenir au suivi"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="carte non-imprimable">
       <div class="titre-bloc">Rapport pour le médecin</div>
+      <div class="periodes" id="periodes-rapport"></div>
       <div class="duo">
         <div class="champ"><label for="rap-debut">Du</label><input type="date" id="rap-debut"></div>
         <div class="champ"><label for="rap-fin">Au</label><input type="date" id="rap-fin"></div>
@@ -346,7 +347,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.9 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.0 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1419,6 +1420,33 @@ function marquerChoix(bouton){
 document.querySelectorAll(".choix").forEach(function(b){
   b.addEventListener("click", function(){ marquerChoix(b); });
 });
+var periodeRapport = 90;
+
+function appliquerPeriodeRapport(jours){
+  var fin = new Date();
+  var debut = new Date(fin.getTime() - (jours-1)*86400000);
+  $("#rap-fin").value = fin.toISOString().slice(0,10);
+  $("#rap-debut").value = debut.toISOString().slice(0,10);
+  periodeRapport = jours;
+  rendrePeriodesRapport();
+  if ($("#rapport").children.length) rendreRapport();
+}
+
+function rendrePeriodesRapport(){
+  var c = $("#periodes-rapport"); c.innerHTML = "";
+  [7,14,30,90].forEach(function(p){
+    var b = el("button", p === periodeRapport ? "actif" : null, p + " j");
+    b.type = "button";
+    b.addEventListener("click", function(){ appliquerPeriodeRapport(p); });
+    c.appendChild(b);
+  });
+}
+
+// une saisie manuelle de dates désélectionne les boutons
+["#rap-debut","#rap-fin"].forEach(function(sel){
+  $(sel).addEventListener("change", function(){ periodeRapport = null; rendrePeriodesRapport(); });
+});
+
 $("#btn-rapport").addEventListener("click", rendreRapport);
 $("#btn-imprimer").addEventListener("click", function(){ rendreRapport(); setTimeout(function(){ window.print(); }, 250); });
 
@@ -1770,9 +1798,7 @@ Store.load().then(function(d){
     etat.activites = d.activites || [];
     etat.meta = Object.assign(etat.meta, d.meta || {});
   }
-  var fin = new Date(), debut = new Date(Date.now() - 89*86400000);
-  $("#rap-fin").value = fin.toISOString().slice(0,10);
-  $("#rap-debut").value = debut.toISOString().slice(0,10);
+  appliquerPeriodeRapport(90);
   remplirReglages();
   majSauvegarde();
   majUniteSaisie();
