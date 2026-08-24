@@ -229,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.4</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.5</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -251,7 +251,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">Répartition des glycémies</div>
+      <div class="titre-bloc" id="titre-repartition">Répartition des glycémies</div>
       <div class="quand" id="tir-quand"></div>
       <div class="colonnes" id="tir-colonnes"></div>
       <div class="zones" id="tir-zones"></div>
@@ -343,7 +343,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.4 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.5 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -885,7 +885,8 @@ function rendreColonnes(cols, zones, l, avecBornes){
 function rendreTIR(){
   var l = surPeriode(periode);
   var f = fenetrePeriode();
-  $("#tir-quand").textContent = pluriel(l.length, "mesure") + " sur la période";
+  $("#titre-repartition").textContent = "Répartition des glycémies sur " + pluriel(periode, "jour");
+  $("#tir-quand").textContent = pluriel(l.length, "mesure");
   rendreColonnes($("#tir-colonnes"), $("#tir-zones"), l, true);
   if (!l.length){
     $("#tir-note").textContent = "Enregistrez des mesures pour voir la répartition sur cette période.";
@@ -1383,15 +1384,15 @@ function rendreRapport(){
 
   // répartition : une barre par plage, la cible sert d'échelle
   var rep = el("div","carte");
-  rep.appendChild(el("div","titre-bloc","Répartition des glycémies"));
-  rep.appendChild(el("div","quand", pluriel(l.length, "mesure") + " sur la période"));
+  rep.appendChild(el("div","titre-bloc","Répartition des glycémies sur " + pluriel(joursFenetre, "jour")));
+  rep.appendChild(el("div","quand", pluriel(l.length, "mesure")));
   var boiteCols = el("div","colonnes"), boiteZones = el("div","zones");
   rendreColonnes(boiteCols, boiteZones, l, true);
   rep.appendChild(boiteCols);
   rep.appendChild(boiteZones);
   c.appendChild(rep);
 
-  var joursFenetre = Math.max(1, Math.round((d2 - d1)/86400000) + 1);
+  var joursFenetre = Math.max(1, Math.round((d2 - d1)/86400000));
   var jourMoy = moyennesJournalieres(l);
   if (jourMoy.length >= 1){
     var gr = el("div","carte");
@@ -1631,9 +1632,9 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   t.couleur(CARTE); t.couleur(BORD, true);
   t.rectArrondi(X0, haut2 - hRepart, W, hRepart, RAYON, true, true);
   cy = haut2 - P - 8;
-  t.texteEspace("RÉPARTITION DES GLYCÉMIES", X0 + P, cy, 8.25, true, ARDOISE, 1.05);
+  t.texteEspace(("Répartition des glycémies sur " + pluriel(joursFenetre, "jour")).toUpperCase(), X0 + P, cy, 8.25, true, ARDOISE, 1.05);
   cy -= 13;
-  t.texte(pluriel(l.length, "mesure") + " sur la période", X0 + P, cy, 9, false, ARDOISE);
+  t.texte(pluriel(l.length, "mesure"), X0 + P, cy, 9, false, ARDOISE);
   cy -= 16;
 
   var nbz = 5, gap = 9;
@@ -1657,7 +1658,7 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   t.couleur(CARTE); t.couleur(BORD, true);
   t.rectArrondi(X0, haut3 - hCourbe, W, hCourbe, RAYON, true, true);
   cy = haut3 - P - 8;
-  var joursFenetre = Math.max(1, Math.round((finFenetre - debutFenetre)/86400000) + 1);
+  var joursFenetre = Math.max(1, Math.round((finFenetre - debutFenetre)/86400000));
   t.texteEspace(("Glycémie moyenne sur " + pluriel(joursFenetre, "jour")).toUpperCase(), X0 + P, cy, 8.25, true, ARDOISE, 1.05);
   cy -= 14;
 
