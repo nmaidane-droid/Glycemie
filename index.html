@@ -211,7 +211,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.4</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.6</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -321,7 +321,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.4 — 23/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.6 — 23/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -365,10 +365,10 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
       </div>
     </div>
     <div class="champ">
-      <label>Contexte</label>
-      <div class="puces" id="g-contextes"></div>
+      <label for="g-date">Date et heure</label>
+      <input type="datetime-local" id="g-date">
+      <div class="aide" id="contexte-auto"></div>
     </div>
-    <div class="champ"><label for="g-date">Date et heure</label><input type="datetime-local" id="g-date"></div>
     <div class="duo">
       <div class="champ"><label for="g-rapide">Insuline rapide (U)</label><input type="number" step="any" inputmode="decimal" id="g-rapide" placeholder="0"></div>
       <div class="champ"><label for="g-lente">Insuline lente (U)</label><input type="number" step="any" inputmode="decimal" id="g-lente" placeholder="0"></div>
@@ -500,6 +500,12 @@ var periode = 14;
 var filtre = "tous";
 var editionId = null;
 var contexteChoisi = "À jeun";
+
+// 4 h–11 h : la mesure du réveil est à jeun ; ensuite, avant repas
+function contexteAuto(ts){
+  var heure = new Date(ts).getHours();
+  return (heure >= 4 && heure < 11) ? "À jeun" : "Avant repas";
+}
 
 var CONTEXTES = ["À jeun","Avant repas"];
 
@@ -912,14 +918,16 @@ function retirer(collection, ident){
 }
 
 /* ============ feuille de saisie ============ */
-function rendreContextes(){
-  var c = $("#g-contextes"); c.innerHTML = "";
-  CONTEXTES.forEach(function(x){
-    var b = el("button", x===contexteChoisi ? "actif" : null, x);
-    b.type = "button";
-    b.addEventListener("click", function(){ contexteChoisi = x; rendreContextes(); });
-    c.appendChild(b);
-  });
+function contexteDeLaFeuille(){
+  var v = $("#g-date").value;
+  var ts = v ? new Date(v).getTime() : Date.now();
+  if (isNaN(ts)) ts = Date.now();
+  return contexteAuto(ts);
+}
+
+function majContexteAuto(){
+  contexteChoisi = contexteDeLaFeuille();
+  $("#contexte-auto").textContent = "Contexte : " + contexteChoisi + " — déduit de l'heure de la mesure.";
 }
 
 function ouvrirFeuille(onglet, mesure){
@@ -932,7 +940,7 @@ function ouvrirFeuille(onglet, mesure){
   if (mesure){
     editionId = mesure.id;
     $("#g-valeur").value = versAff(mesure.mg);
-    contexteChoisi = mesure.contexte;
+
     $("#g-date").value = pourLocal(new Date(mesure.ts));
     $("#g-rapide").value = mesure.rapide || "";
     $("#g-lente").value = mesure.lente || "";
@@ -944,8 +952,9 @@ function ouvrirFeuille(onglet, mesure){
     $("#f-glycemie").reset();
     $("#g-supprimer").hidden = true;
     $("#g-date").value = maintenant;
+
   }
-  rendreContextes();
+  majContexteAuto();
   $(".barre-feuille h2").textContent = mesure ? "Modifier la mesure" : "Nouvelle mesure";
   $("#voile").classList.add("ouvert");
   $("#feuille").classList.add("ouvert");
@@ -976,6 +985,7 @@ document.querySelectorAll(".onglets button").forEach(function(b){
 $("#fab").addEventListener("click", function(){ ouvrirFeuille("glycemie", null); });
 $("#voile").addEventListener("click", function(){ fermerFeuille(); });
 $("#fermer-feuille").addEventListener("click", function(){ fermerFeuille(); });
+$("#g-date").addEventListener("change", majContexteAuto);
 
 $("#f-glycemie").addEventListener("submit", function(e){
   e.preventDefault();
@@ -987,7 +997,7 @@ $("#f-glycemie").addEventListener("submit", function(e){
     id: editionId || id(),
     ts: $("#g-date").value ? new Date($("#g-date").value).getTime() : Date.now(),
     mg: mg,
-    contexte: contexteChoisi,
+    contexte: contexteAuto($("#g-date").value ? new Date($("#g-date").value).getTime() : Date.now()),
     rapide: num($("#g-rapide").value) || 0,
     lente: num($("#g-lente").value) || 0,
     glucides: num($("#g-glucides").value) || 0,
