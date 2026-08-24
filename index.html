@@ -79,12 +79,12 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 .e-haut{color:var(--haut);background:rgba(232,129,26,.13)}
 .e-treshaut{color:var(--bas);background:rgba(229,72,77,.12)}
 
-.couloir{position:relative;height:30px;margin-top:16px;border-radius:8px;overflow:hidden;background:#EEF1F6}
+.couloir{position:relative;height:30px;margin-top:2px;border-radius:8px;overflow:hidden;background:#EEF1F6}
 .couloir .seg{position:absolute;top:0;bottom:0}
 .couloir .seg.cible{box-shadow:inset 1.5px 0 0 #fff,inset -1.5px 0 0 #fff}
-.couloir .etiq-cible{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:10px;font-weight:600;letter-spacing:.01em;white-space:nowrap;pointer-events:none}
 .couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:4px;background:#fff;border-radius:3px;box-shadow:0 0 0 1.5px var(--encre);transition:left .4s cubic-bezier(.2,.8,.2,1)}
+.couloir-reperes{position:relative;height:14px;font-size:10px;color:var(--ardoise);margin-top:14px}
+.couloir-reperes span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
 .couloir-legende{position:relative;height:15px;font-size:10.5px;color:var(--ardoise);margin-top:6px}
 .couloir-legende span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
 .couloir-legende span.bord-g{transform:none;left:0}
@@ -228,7 +228,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.9</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v4.0</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -341,7 +341,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.9 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 4.0 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -656,6 +656,14 @@ function rendreDerniere(){
   // le couloir
   var min = Math.min(r.hypo*0.6, 40), max = Math.max(r.hyper*1.15, r.cibleHaut*1.6);
   function pct(x){ return Math.max(0, Math.min(100, (x-min)/(max-min)*100)); }
+  var reperes = el("div","couloir-reperes");
+  [r.hypo, r.cibleBas, r.cibleHaut, r.hyper].forEach(function(v){
+    var s = el("span", null, affiche(v));
+    s.style.left = pct(v) + "%";
+    reperes.appendChild(s);
+  });
+  b.appendChild(reperes);
+
   var co = el("div","couloir");
   var segments = [
     { de:min,          a:r.hypo,      fond:"#E5484D", cls:"" },
@@ -669,9 +677,6 @@ function rendreDerniere(){
     if (largeur <= 0) return;
     var seg = el("div","seg"+s.cls);
     seg.style.left = pct(s.de)+"%"; seg.style.width = largeur+"%"; seg.style.background = s.fond;
-    if (s.cls && largeur >= 22){
-      seg.appendChild(el("div","etiq-cible", affiche(r.cibleBas)+"–"+affiche(r.cibleHaut)));
-    }
     co.appendChild(seg);
   });
   var cur = el("div","curseur"); cur.style.left = pct(d.mg)+"%";
