@@ -97,11 +97,6 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 .stat .v{font-family:"Space Grotesk",sans-serif;font-size:25px;font-weight:700;letter-spacing:-.03em;margin-top:5px}
 .stat .n{font-size:11.5px;color:var(--ardoise)}
 
-.tir{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:12px 0 8px;background:var(--trait)}
-.tir div{height:100%}
-.tir-legende{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ardoise)}
-.tir-legende b{color:var(--encre);font-weight:600}
-.pastille{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
 
 /* ---------- graphiques ---------- */
 .periodes{display:flex;gap:6px;margin-bottom:12px}
@@ -111,14 +106,14 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 .vide{color:var(--ardoise);font-size:13.5px;text-align:center;padding:22px 8px}
 
 /* ---------- moyennes par zone (tableau de bord) ---------- */
-.colonnes{display:flex;align-items:flex-end;gap:10px;height:158px;margin-bottom:8px}
+.colonnes{display:flex;align-items:flex-end;gap:6px;height:158px;margin-bottom:8px}
 .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
-.col .v{font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:700;margin-bottom:5px}
+.col .v{font-family:"Space Grotesk",sans-serif;font-size:13.5px;font-weight:700;margin-bottom:5px}
 .col .barre{width:100%;border-radius:9px 9px 0 0;min-height:3px}
 .col .vide-col{width:100%;height:3px;border-radius:2px;background:var(--trait)}
-.zones{display:flex;gap:10px}
-.zones div{flex:1;text-align:center;font-size:11.5px;color:var(--ardoise);line-height:1.3}
-.zones div b{display:block;color:var(--encre);font-weight:600;font-size:12px}
+.zones{display:flex;gap:6px}
+.zones div{flex:1;text-align:center;font-size:10.5px;color:var(--ardoise);line-height:1.3}
+.zones div b{display:block;color:var(--encre);font-weight:600;font-size:11.5px}
 
 /* ---------- répartition du rapport ---------- */
 .ligne-plage{display:flex;align-items:center;gap:10px;margin:9px 0}
@@ -238,7 +233,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v4.6</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.0</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -267,7 +262,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">Courbe des glycémies</div>
+      <div class="titre-bloc">Courbe — moyenne par jour</div>
       <div id="graphe"></div>
     </div>
 
@@ -355,7 +350,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 4.6 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.0 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -562,7 +557,6 @@ function classe(mg){
   if (mg < r.hyper) return "haut";
   return "treshaut";
 }
-var PLAGES = ["hypo","bas","cible","haut","treshaut"];
 var LIBELLE = {
   hypo:"Hypoglycémie", bas:"Juste sous la cible", cible:"Dans la cible",
   haut:"Au-dessus de la cible", treshaut:"Très au-dessus"
@@ -595,8 +589,10 @@ function toast(msg){
   clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove("vu"); }, 2600);
 }
 function surPeriode(jours){
-  var lim = Date.now() - jours*86400000;
-  return etat.mesures.filter(function(m){ return m.ts >= lim; }).sort(function(a,b){ return a.ts-b.ts; });
+  var fin = new Date(); fin.setHours(23,59,59,999);
+  var debut = new Date(fin.getTime() - (jours-1)*86400000); debut.setHours(0,0,0,0);
+  return etat.mesures.filter(function(m){ return m.ts >= debut.getTime() && m.ts <= fin.getTime(); })
+                     .sort(function(a,b){ return a.ts-b.ts; });
 }
 
 /* ============ vues ============ */
@@ -829,8 +825,8 @@ function ecarterReperes(boite, marques){
 
 function rendreStats(){
   var g = $("#bloc-stats"); g.innerHTML = "";
-  var l7 = surPeriode(7), l14 = surPeriode(14), l30 = surPeriode(30);
-  var moy7 = moyenne(l7), moy30 = moyenne(l30);
+  var lp = surPeriode(periode), l30 = surPeriode(30);
+  var moyP = moyenne(lp), moy30 = moyenne(l30);
 
   function stat(k, v, n){
     var s = el("div","stat");
@@ -839,11 +835,12 @@ function rendreStats(){
     if (n) s.appendChild(el("div","n",n));
     g.appendChild(s);
   }
-  stat("Moyenne 7 j", moy7 ? affiche(moy7) : "—", moy7 ? unite()+" · "+l7.length+" mesures" : "pas de mesure");
+  stat("Moyenne " + periode + " j", moyP ? affiche(moyP) : "—",
+       moyP ? unite()+" · "+pluriel(lp.length, "mesure") : "pas de mesure");
   var a1c = estimerHbA1c();
   stat("HbA1c estimée", a1c.valeur === null ? "—" : pourcent(a1c.valeur), a1c.note);
-  var hypos = l14.filter(function(m){ return m.mg < etat.reglages.hypo; }).length;
-  stat("Hypoglycémies", String(hypos), "sur 14 jours");
+  var hypos = lp.filter(function(m){ return m.mg < etat.reglages.hypo; }).length;
+  stat("Hypoglycémies", String(hypos), "sur " + periode + " jours");
   var ajd = etat.mesures.filter(function(m){ return new Date(m.ts).toDateString() === new Date().toDateString(); });
   var uni = 0, gluc = 0;
   ajd.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); gluc += (m.glucides||0); });
@@ -898,12 +895,18 @@ function rendreTIR(){
   cols.innerHTML = ""; zones.innerHTML = "";
   var r = etat.reglages;
 
+  // cinq zones, comme dans le rapport : aucune fusion
   var groupes = [
-    { nom:"Hypo",   couleur:COULEUR.hypo,     test:function(mg){ return mg < r.cibleBas; } },
-    { nom:"Normal", couleur:COULEUR.cible,    test:function(mg){ return mg >= r.cibleBas && mg <= r.cibleHaut; } },
-    { nom:"Élevé",  couleur:COULEUR.haut,     test:function(mg){ return mg > r.cibleHaut && mg < r.hyper; } },
-    { nom:"Alerte", couleur:COULEUR.treshaut, test:function(mg){ return mg >= r.hyper; } }
+    { nom:"Hypo",   cle:"hypo" },
+    { nom:"Bas",    cle:"bas" },
+    { nom:"Normal", cle:"cible" },
+    { nom:"Élevé",  cle:"haut" },
+    { nom:"Alerte", cle:"treshaut" }
   ];
+  groupes.forEach(function(g){
+    g.couleur = COULEUR[g.cle];
+    g.test = function(mg){ return classe(mg) === g.cle; };
+  });
 
   groupes.forEach(function(g){
     var s = l.filter(function(m){ return g.test(m.mg); });
@@ -928,7 +931,7 @@ function rendreTIR(){
 
     var z = el("div");
     z.appendChild(el("b", null, g.nom));
-    z.appendChild(document.createTextNode(g.n ? pluriel(g.n, "mesure") + " · moy " + affiche(g.moy) : "aucune"));
+    z.appendChild(document.createTextNode(g.n ? pluriel(g.n, "mesure") : "aucune"));
     zones.appendChild(z);
   });
 
@@ -944,7 +947,7 @@ function rendrePeriodes(){
   var c = $("#periodes"); c.innerHTML = "";
   [7,14,30,90].forEach(function(p){
     var b = el("button", p===periode ? "actif" : null, p + " j");
-    b.addEventListener("click", function(){ periode = p; rendreTIR(); rendrePeriodes(); rendreGraphe(); rendreProfil(); });
+    b.addEventListener("click", function(){ periode = p; rendreSuivi(); });
     c.appendChild(b);
   });
 }
@@ -993,11 +996,23 @@ function grapheSVG(l, bornes){
   return s;
 }
 
+function fenetrePeriode(){
+  var fin = new Date(); fin.setHours(23,59,59,0);
+  var debut = new Date(fin.getTime() - (periode-1)*86400000); debut.setHours(0,0,0,0);
+  return [debut.getTime(), fin.getTime()];
+}
+
 function rendreGraphe(){
   var c = $("#graphe"); c.innerHTML = "";
-  var l = surPeriode(periode);
-  if (l.length < 2){ c.appendChild(el("div","vide","Au moins deux mesures sont nécessaires pour tracer la courbe.")); return; }
-  c.innerHTML = grapheSVG(l);
+  var f = fenetrePeriode();
+  var l = etat.mesures.filter(function(m){ return m.ts >= f[0] && m.ts <= f[1]; })
+                      .sort(function(a,b){ return a.ts - b.ts; });
+  var pts = moyennesJournalieres(l);
+  if (!pts.length){
+    c.appendChild(el("div","vide","Aucune mesure sur les " + periode + " derniers jours."));
+    return;
+  }
+  c.innerHTML = grapheSVG(pts, f);
 }
 
 var TRANCHES = [
