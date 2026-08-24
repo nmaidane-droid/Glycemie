@@ -222,15 +222,13 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.0</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.2</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
 <main>
   <!-- ================= SUIVI ================= -->
   <section class="vue actif" id="v-suivi">
-    <button class="gros" id="btn-envoyer">Envoyer mon rapport</button>
-    <div class="aide" style="margin:8px 0 16px">Les 90 derniers jours, en PDF, avec les graphiques.</div>
     <div class="carte" id="rappel-sauvegarde" hidden style="border-color:rgba(61,59,209,.4);background:rgba(61,59,209,.04)">
       <div class="titre-bloc">Fichier de secours</div>
       <p style="margin:0 0 12px;font-size:13.5px" id="rappel-texte"></p>
@@ -279,9 +277,10 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
         <div class="champ"><label for="rap-debut">Du</label><input type="date" id="rap-debut"></div>
         <div class="champ"><label for="rap-fin">Au</label><input type="date" id="rap-fin"></div>
       </div>
-      <button class="gros" id="btn-rapport">Générer le rapport</button>
-      <button class="gros secondaire" id="btn-imprimer">Imprimer / enregistrer en PDF</button>
-      <div class="aide">Le rapport reprend les statistiques de la période et le détail des mesures, dans une mise en page prête à imprimer.</div>
+      <button class="gros" id="btn-envoyer">Envoyer le PDF</button>
+      <button class="gros secondaire" id="btn-imprimer">Imprimer</button>
+      <button class="gros secondaire" id="btn-rapport">Afficher à l'écran</button>
+      <div class="aide">Période de 90 jours par défaut, modifiable ci-dessus. Le PDF s'envoie par WhatsApp, e-mail ou tout autre application.</div>
     </div>
     <div id="rapport"></div>
   </section>
@@ -334,7 +333,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.0 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.2 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1370,7 +1369,7 @@ function assemblerPDF(contenu, titre){
 }
 
 /* ---------- mise en page du rapport ---------- */
-function construireRapportPDF(l, jours){
+function construireRapportPDF(l, debutFenetre, finFenetre){
   var r = etat.reglages, t = new Toile();
   var G = "#69748F", TRAIT = "#D9DEE8";
   var x0 = MARGE, x1 = PAGE_L - MARGE, y = PAGE_H - MARGE;
@@ -1379,14 +1378,16 @@ function construireRapportPDF(l, jours){
   var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
   var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
-  var d1 = new Date(l[0].ts), d2 = new Date(l[l.length-1].ts);
-  var joursCouverts = Math.max(1, Math.round((d2 - d1)/86400000) + 1);
+  var d1 = new Date(debutFenetre), d2 = new Date(finFenetre);
+  var vus = {};
+  l.forEach(function(m){ vus[new Date(m.ts).toDateString()] = 1; });
+  var joursCouverts = Math.max(1, Object.keys(vus).length);
 
   // en-tête
   t.texte("Rapport de suivi glycémique", x0, y, 17, true);
   y -= 16;
   t.texte((r.nom ? r.nom + "  ·  " : "") + d1.toLocaleDateString("fr-FR") + " au " + d2.toLocaleDateString("fr-FR") +
-          "  ·  " + pluriel(l.length, "mesure") + " sur " + pluriel(joursCouverts, "jour"), x0, y, 9, false, G);
+          "  ·  " + pluriel(l.length, "mesure") + " sur " + pluriel(joursCouverts, "jour") + " de relevé", x0, y, 9, false, G);
   y -= 12;
   t.couleur(TRAIT, true).ligne(x0, y, x1, y, 0.8);
   y -= 26;
@@ -1396,7 +1397,7 @@ function construireRapportPDF(l, jours){
     ["Glycémie moyenne", affiche(moy) + " " + unite()],
     ["GMI de la période", pourcent(3.31 + 0.02392*moy)],
     ["Cible retenue", affiche(r.cibleBas) + " - " + affiche(r.cibleHaut) + " " + unite()],
-    ["Mesures par jour", (l.length/joursCouverts).toFixed(1).replace(".", ",")]
+    ["Mesures par jour relevé", (l.length/joursCouverts).toFixed(1).replace(".", ",")]
   ];
   if (uni) lignes.push(["Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".", ",") + " U"]);
   lignes.forEach(function(ln){
@@ -1450,7 +1451,7 @@ function construireRapportPDF(l, jours){
   var vals = pts.map(function(p){ return p.mg; });
   var vmin = Math.min.apply(null, vals.concat([r.cibleBas])) * 0.85;
   var vmax = Math.max.apply(null, vals.concat([r.cibleHaut])) * 1.12;
-  var t0 = pts[0].ts, t1 = pts[pts.length-1].ts; if (t1 === t0) t1 = t0 + 86400000;
+  var t0 = debutFenetre, t1 = finFenetre; if (t1 <= t0) t1 = t0 + 86400000;
   function X(v){ return gG + (v - t0)/(t1 - t0) * (gD - gG); }
   function Y(v){ return gB + (v - vmin)/(vmax - vmin) * gH; }
 
@@ -1470,8 +1471,11 @@ function construireRapportPDF(l, jours){
   pts.forEach(function(p){
     t.couleur(COULEUR[classe(p.mg)]).disque(X(p.ts), Y(p.mg), pts.length > 45 ? 1.6 : 2.4);
   });
+  var milieu = new Date((t0 + t1)/2);
   t.texte(d1.toLocaleDateString("fr-FR"), gG, gB - 12, 7.5, false, G);
+  t.texte(milieu.toLocaleDateString("fr-FR"), (gG+gD)/2, gB - 12, 7.5, false, G, "centre");
   t.texte(d2.toLocaleDateString("fr-FR"), gD, gB - 12, 7.5, false, G, "droite");
+  t.couleur("#E9ECF3", true).ligne((gG+gD)/2, gB, (gG+gD)/2, gB + 4, 0.6);
   t.texte("Bande verte : plage cible. Ligne rouge : seuil d'hypoglycémie. Un point = moyenne du jour.",
           x0, gB - 26, 8, false, G);
 
@@ -1493,12 +1497,15 @@ function telechargerBlob(blob, nom){
 }
 
 function envoyerRapport(){
-  var lim = Date.now() - 90*86400000;
-  var l = etat.mesures.filter(function(m){ return m.ts >= lim; }).sort(function(a,b){ return a.ts - b.ts; });
+  var debut = $("#rap-debut").value ? new Date($("#rap-debut").value + "T00:00") : new Date(Date.now() - 89*86400000);
+  var fin = $("#rap-fin").value ? new Date($("#rap-fin").value + "T23:59") : new Date();
+  if (fin <= debut){ toast("La date de fin doit suivre la date de début."); return; }
+  var l = etat.mesures.filter(function(m){ return m.ts >= debut.getTime() && m.ts <= fin.getTime(); })
+                      .sort(function(a,b){ return a.ts - b.ts; });
   if (l.length < 2){ toast("Il faut au moins deux mesures pour établir un rapport."); return; }
 
   var bytes;
-  try { bytes = construireRapportPDF(l, 90); }
+  try { bytes = construireRapportPDF(l, debut.getTime(), fin.getTime()); }
   catch(e){ toast("Rapport impossible à générer."); return; }
 
   var blob = new Blob([bytes], { type:"application/pdf" });
@@ -1565,7 +1572,7 @@ Store.load().then(function(d){
     etat.activites = d.activites || [];
     etat.meta = Object.assign(etat.meta, d.meta || {});
   }
-  var fin = new Date(), debut = new Date(Date.now() - 29*86400000);
+  var fin = new Date(), debut = new Date(Date.now() - 89*86400000);
   $("#rap-fin").value = fin.toISOString().slice(0,10);
   $("#rap-debut").value = debut.toISOString().slice(0,10);
   remplirReglages();
