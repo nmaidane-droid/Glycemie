@@ -83,9 +83,8 @@ main{padding:16px 16px 24px;max-width:640px;margin:0 auto}
 .couloir .seg{position:absolute;top:0;bottom:0}
 .couloir .seg.cible{box-shadow:inset 1.5px 0 0 #fff,inset -1.5px 0 0 #fff}
 .couloir .curseur{position:absolute;top:-3px;bottom:-3px;width:4px;background:#fff;border-radius:3px;box-shadow:0 0 0 1.5px var(--encre);transition:left .4s cubic-bezier(.2,.8,.2,1)}
-.couloir-reperes{position:relative;height:19px;font-size:10px;line-height:14px;color:var(--ardoise);margin-top:14px}
+.couloir-reperes{position:relative;height:14px;font-size:10px;line-height:14px;color:var(--ardoise);margin-top:14px}
 .couloir-reperes span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
-.couloir-reperes .trait-repere{position:absolute;bottom:-2px;width:1px;height:5px;background:#C9CFDC;transform:translateX(-50%)}
 .couloir-legende{position:relative;height:15px;font-size:10.5px;color:var(--ardoise);margin-top:6px}
 .couloir-legende span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
 .couloir-legende span.bord-g{transform:none;left:0}
@@ -230,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.3</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.4</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -287,14 +286,10 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     <div class="carte non-imprimable">
       <div class="titre-bloc">Rapport pour le médecin</div>
       <div class="periodes" id="periodes-rapport"></div>
-      <div class="duo">
-        <div class="champ"><label for="rap-debut">Du</label><input type="date" id="rap-debut"></div>
-        <div class="champ"><label for="rap-fin">Au</label><input type="date" id="rap-fin"></div>
-      </div>
       <button class="gros secondaire choix" id="btn-envoyer">Envoyer le PDF</button>
       <button class="gros secondaire choix" id="btn-imprimer">Imprimer</button>
       <button class="gros secondaire choix" id="btn-rapport">Afficher à l'écran</button>
-      <div class="aide">Période de 90 jours par défaut, modifiable ci-dessus. Le PDF s'envoie par WhatsApp, e-mail ou tout autre application.</div>
+      <div class="aide">Le PDF s'envoie par WhatsApp, e-mail ou toute autre application.</div>
     </div>
     <div id="rapport"></div>
   </section>
@@ -348,7 +343,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.3 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.4 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -670,10 +665,7 @@ function rendreDerniere(){
     var s = el("span", null, affiche(p[1]));
     s.style.left = pct(p[1]) + "%";
     reperes.appendChild(s);
-    var trait = el("i","trait-repere");
-    trait.style.left = pct(p[1]) + "%";
-    reperes.appendChild(trait);
-    marques.push({ el:s, trait:trait, cible:pct(p[1]), rang:p[0] });
+    marques.push({ el:s, cible:pct(p[1]), rang:p[0] });
   });
   b.appendChild(reperes);
   ecarterReperes(reperes, marques);
@@ -794,45 +786,31 @@ function identiteRapport(){
 }
 function pluriel(n, mot){ return n + " " + mot + (n > 1 ? "s" : ""); }
 
-// une seule ligne, un trait sous chaque nombre pour matérialiser l'alignement,
-// et fusion "60/70" quand deux seuils sont trop proches pour tenir côte à côte
+// une seule ligne : chaque nombre reste centré sur son seuil, la taille s'ajuste pour éviter tout contact
 function ecarterReperes(boite, marques){
   var W = boite.clientWidth;
   if (!W || !marques.length) return;
   var ESPACE = 4;
 
-  function poser(liste){
-    liste.forEach(function(m){
+  function poser(){
+    marques.forEach(function(m){
       m.demi = m.el.offsetWidth/2;
       m.x = Math.min(W - m.demi, Math.max(m.demi, m.cible/100 * W));
       m.el.style.left = m.x.toFixed(1) + "px";
     });
   }
-  function serre(liste){
-    for (var i=1; i<liste.length; i++){
-      if (liste[i].x - liste[i].demi < liste[i-1].x + liste[i-1].demi + ESPACE) return i;
+  function serre(){
+    for (var i=1; i<marques.length; i++){
+      if (marques[i].x - marques[i].demi < marques[i-1].x + marques[i-1].demi + ESPACE) return true;
     }
-    return -1;
+    return false;
   }
 
-  var liste = marques.slice();
-  var tailles = [10, 9.5, 9, 8.5];
+  var tailles = [10, 9.5, 9, 8.5, 8, 7.5];
   for (var t = 0; t < tailles.length; t++){
     boite.style.fontSize = tailles[t] + "px";
-    poser(liste);
-    if (serre(liste) === -1) return;
-  }
-
-  // toujours trop serré : on fusionne le couple fautif en un seul repère
-  var i = serre(liste);
-  if (i > 0){
-    var g = liste[i-1], d2 = liste[i];
-    g.el.textContent = g.el.textContent + "/" + d2.el.textContent;
-    g.cible = (g.cible + d2.cible)/2;
-    d2.el.remove();
-    if (d2.trait) d2.trait.style.opacity = "1";
-    liste.splice(i, 1);
-    poser(liste);
+    poser();
+    if (!serre()) return;
   }
 }
 
@@ -1367,8 +1345,7 @@ $("#btn-vider").addEventListener("click", function(){
 
 /* ============ rapport ============ */
 function rendreRapport(){
-  var d2 = $("#rap-fin").value ? new Date($("#rap-fin").value + "T23:59").getTime() : Date.now();
-  var d1 = $("#rap-debut").value ? new Date($("#rap-debut").value + "T00:00").getTime() : (d2 - 89*86400000);
+  var f = fenetreRapport(), d1 = f[0], d2 = f[1];
   var l = etat.mesures.filter(function(m){ return m.ts >= d1 && m.ts <= d2; }).sort(function(a,b){ return a.ts-b.ts; });
   var c = $("#rapport"); c.innerHTML = "";
   if (!l.length){ c.appendChild(el("div","vide","Aucune mesure sur cette période.")); return; }
@@ -1436,11 +1413,13 @@ document.querySelectorAll(".choix").forEach(function(b){
 });
 var periodeRapport = 90;
 
+function fenetreRapport(){
+  var fin = new Date(); fin.setHours(23,59,59,0);
+  var debut = new Date(fin.getTime() - (periodeRapport-1)*86400000); debut.setHours(0,0,0,0);
+  return [debut.getTime(), fin.getTime()];
+}
+
 function appliquerPeriodeRapport(jours){
-  var fin = new Date();
-  var debut = new Date(fin.getTime() - (jours-1)*86400000);
-  $("#rap-fin").value = fin.toISOString().slice(0,10);
-  $("#rap-debut").value = debut.toISOString().slice(0,10);
   periodeRapport = jours;
   rendrePeriodesRapport();
   if ($("#rapport").children.length) rendreRapport();
@@ -1455,11 +1434,6 @@ function rendrePeriodesRapport(){
     c.appendChild(b);
   });
 }
-
-// une saisie manuelle de dates désélectionne les boutons
-["#rap-debut","#rap-fin"].forEach(function(sel){
-  $(sel).addEventListener("change", function(){ periodeRapport = null; rendrePeriodesRapport(); });
-});
 
 $("#btn-rapport").addEventListener("click", rendreRapport);
 $("#btn-imprimer").addEventListener("click", function(){ rendreRapport(); setTimeout(function(){ window.print(); }, 250); });
@@ -1736,10 +1710,8 @@ function telechargerBlob(blob, nom){
 }
 
 function envoyerRapport(){
-  var debut = $("#rap-debut").value ? new Date($("#rap-debut").value + "T00:00") : new Date(Date.now() - 89*86400000);
-  var fin = $("#rap-fin").value ? new Date($("#rap-fin").value + "T23:59") : new Date();
-  if (fin <= debut){ toast("La date de fin doit suivre la date de début."); return; }
-  var l = etat.mesures.filter(function(m){ return m.ts >= debut.getTime() && m.ts <= fin.getTime(); })
+  var f = fenetreRapport(), debut = new Date(f[0]), fin = new Date(f[1]);
+  var l = etat.mesures.filter(function(m){ return m.ts >= f[0] && m.ts <= f[1]; })
                       .sort(function(a,b){ return a.ts - b.ts; });
   if (l.length < 2){ toast("Il faut au moins deux mesures pour établir un rapport."); return; }
 
