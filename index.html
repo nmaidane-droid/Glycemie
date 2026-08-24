@@ -229,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.5</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.9</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -346,7 +346,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.5 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.9 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -845,18 +845,26 @@ function rendreStats(){
 }
 
 function groupesZones(l){
+  var r = etat.reglages, pas = estMmol() ? 0.1 : 1;
   var noms = { hypo:"Hypo", bas:"Bas", cible:"Normal", haut:"Élevé", treshaut:"Alerte" };
+  var bornes = {
+    hypo: "< " + affiche(r.hypo),
+    bas: affiche(r.hypo) + "–" + affiche(r.cibleBas - pas),
+    cible: affiche(r.cibleBas) + "–" + affiche(r.cibleHaut),
+    haut: affiche(r.cibleHaut + pas) + "–" + affiche(r.hyper - pas),
+    treshaut: "≥ " + affiche(r.hyper)
+  };
   return ["hypo","bas","cible","haut","treshaut"].map(function(cle){
     var s = l.filter(function(m){ return classe(m.mg) === cle; });
     return {
-      nom: noms[cle], cle: cle, couleur: COULEUR[cle], n: s.length,
+      nom: noms[cle], bornes: bornes[cle], cle: cle, couleur: COULEUR[cle], n: s.length,
       part: l.length ? s.length/l.length*100 : 0
     };
   });
 }
 
 // colonnes de répartition, communes au tableau de bord, au rapport et au PDF
-function rendreColonnes(cols, zones, l){
+function rendreColonnes(cols, zones, l, avecBornes){
   cols.innerHTML = ""; zones.innerHTML = "";
   groupesZones(l).forEach(function(g){
     var c = el("div","col");
@@ -874,6 +882,7 @@ function rendreColonnes(cols, zones, l){
 
     var z = el("div");
     z.appendChild(el("b", null, g.nom));
+    if (avecBornes) z.appendChild(document.createTextNode(g.bornes));
     zones.appendChild(z);
   });
 }
@@ -883,7 +892,7 @@ function rendreTIR(){
   var f = fenetrePeriode();
   $("#tir-quand").textContent = pluriel(l.length, "mesure") + " · du " +
     new Date(f[0]).toLocaleDateString("fr-FR") + " au " + new Date(f[1]).toLocaleDateString("fr-FR");
-  rendreColonnes($("#tir-colonnes"), $("#tir-zones"), l);
+  rendreColonnes($("#tir-colonnes"), $("#tir-zones"), l, true);
   if (!l.length){
     $("#tir-note").textContent = "Enregistrez des mesures pour voir la répartition sur cette période.";
     return;
@@ -1385,19 +1394,22 @@ function rendreRapport(){
   rep.appendChild(el("div","quand", pluriel(l.length, "mesure") + " · du " +
     new Date(d1).toLocaleDateString("fr-FR") + " au " + new Date(d2).toLocaleDateString("fr-FR")));
   var boiteCols = el("div","colonnes"), boiteZones = el("div","zones");
-  rendreColonnes(boiteCols, boiteZones, l);
+  rendreColonnes(boiteCols, boiteZones, l, true);
   rep.appendChild(boiteCols);
   rep.appendChild(boiteZones);
   c.appendChild(rep);
 
+  var joursFenetre = Math.max(1, Math.round((d2 - d1)/86400000) + 1);
   var jourMoy = moyennesJournalieres(l);
   if (jourMoy.length >= 1){
     var gr = el("div","carte");
-    gr.appendChild(el("div","titre-bloc","Courbe — moyenne par jour"));
+    gr.appendChild(el("div","titre-bloc","Glycémie moyenne sur " + pluriel(joursFenetre, "jour")));
     var boite = el("div");
     boite.innerHTML = grapheSVG(jourMoy, [d1, d2]);
     gr.appendChild(boite);
-    gr.appendChild(el("div","avis","Un point = moyenne du jour. Bande verte : plage cible " + affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite() + ". Ligne rouge : seuil d'hypoglycémie."));
+    gr.appendChild(el("div","avis","Un point = moyenne du jour. Bande verte : plage cible " + affiche(etat.reglages.cibleBas) + "–" +
+      affiche(etat.reglages.cibleHaut) + " " + unite() + ". Ligne rouge : seuil d'hypoglycémie " +
+      affiche(etat.reglages.hypo) + " " + unite() + "."));
     c.appendChild(gr);
   }
 }
@@ -1419,6 +1431,8 @@ function pdfLatin(s){
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/\u2026/g, "...")
+    .replace(/\u2265/g, ">=")
+    .replace(/\u2264/g, "<=")
     .replace(/[^\x00-\xFF]/g, "?");
 }
 function pdfEchappe(s){
@@ -1618,7 +1632,8 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
     t.rectArrondi(x, basCol + 26, largeurCol, hb, 3.2, true, false);
     t.texte(g.n ? Math.round(g.part) + " %" : "—", x + largeurCol/2, basCol + 30 + hb, 9.4, true,
             g.n ? g.couleur : ARDOISE, "centre");
-    t.texte(g.nom, x + largeurCol/2, basCol + 12, 9, true, ENCRE, "centre");
+    t.texte(g.nom, x + largeurCol/2, basCol + 13, 9, true, ENCRE, "centre");
+    t.texte(g.bornes, x + largeurCol/2, basCol + 3, 8, false, ARDOISE, "centre");
   });
   y = haut2 - hRepart - ECART;
 
@@ -1627,7 +1642,8 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   t.couleur(CARTE); t.couleur(BORD, true);
   t.rectArrondi(X0, haut3 - hCourbe, W, hCourbe, RAYON, true, true);
   cy = haut3 - P - 8;
-  t.texteEspace("COURBE — MOYENNE PAR JOUR", X0 + P, cy, 8.25, true, ARDOISE, 1.05);
+  var joursFenetre = Math.max(1, Math.round((finFenetre - debutFenetre)/86400000) + 1);
+  t.texteEspace(("Glycémie moyenne sur " + pluriel(joursFenetre, "jour")).toUpperCase(), X0 + P, cy, 8.25, true, ARDOISE, 1.05);
   cy -= 14;
 
   var gG = X0 + P + 26, gD = X1 - P, gH = 200, gB = cy - gH;
@@ -1659,7 +1675,8 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   t.couleur(BORD).rect(X0 + P, ly - 4, 1.5, 22);
   t.texte("Un point = moyenne du jour. Bande verte : plage cible " +
           affiche(r.cibleBas) + "–" + affiche(r.cibleHaut) + " " + unite() + ".", X0 + P + 8, ly + 8, 8.5, false, ARDOISE);
-  t.texte("Ligne rouge : seuil d'hypoglycémie.", X0 + P + 8, ly - 2, 8.5, false, ARDOISE);
+  t.texte("Ligne rouge : seuil d'hypoglycémie " + affiche(r.hypo) + " " + unite() + ".",
+          X0 + P + 8, ly - 2, 8.5, false, ARDOISE);
 
   // mention de bas de page
   t.texte("Généré le " + new Date().toLocaleDateString("fr-FR") +
