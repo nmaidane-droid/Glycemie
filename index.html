@@ -229,7 +229,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.7</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.8</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -343,7 +343,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.7 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.8 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -786,7 +786,8 @@ function identiteRapport(){
 }
 function pluriel(n, mot){ return n + " " + mot + (n > 1 ? "s" : ""); }
 
-// une seule ligne : chaque nombre reste centré sur son seuil, la taille s'ajuste pour éviter tout contact
+// une seule ligne : on réduit d'abord la taille, puis, si deux nombres se touchent encore,
+// on les écarte du strict minimum en partageant le décalage entre les deux
 function ecarterReperes(boite, marques){
   var W = boite.clientWidth;
   if (!W || !marques.length) return;
@@ -796,8 +797,10 @@ function ecarterReperes(boite, marques){
     marques.forEach(function(m){
       m.demi = m.el.offsetWidth/2;
       m.x = Math.min(W - m.demi, Math.max(m.demi, m.cible/100 * W));
-      m.el.style.left = m.x.toFixed(1) + "px";
     });
+  }
+  function appliquer(){
+    marques.forEach(function(m){ m.el.style.left = m.x.toFixed(1) + "px"; });
   }
   function serre(){
     for (var i=1; i<marques.length; i++){
@@ -806,12 +809,26 @@ function ecarterReperes(boite, marques){
     return false;
   }
 
-  var tailles = [10, 9.5, 9, 8.5, 8, 7.5];
+  var tailles = [10, 9.5, 9];
   for (var t = 0; t < tailles.length; t++){
     boite.style.fontSize = tailles[t] + "px";
     poser();
-    if (!serre()) return;
+    if (!serre()){ appliquer(); return; }
   }
+
+  // écartement minimal : chacun recule d'une demi-largeur du manque
+  for (var passe = 0; passe < 3; passe++){
+    for (var i = 1; i < marques.length; i++){
+      var g = marques[i-1], d2 = marques[i];
+      var manque = (g.x + g.demi + ESPACE) - (d2.x - d2.demi);
+      if (manque > 0){
+        g.x -= manque/2;
+        d2.x += manque/2;
+      }
+    }
+    marques.forEach(function(m){ m.x = Math.min(W - m.demi, Math.max(m.demi, m.x)); });
+  }
+  appliquer();
 }
 
 function rendreStats(){
