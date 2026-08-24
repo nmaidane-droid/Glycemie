@@ -227,7 +227,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.3</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v5.4</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -257,7 +257,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">Courbe — moyenne par jour</div>
+      <div class="titre-bloc" id="titre-courbe">Glycémie moyenne sur 7 jours</div>
       <div id="graphe"></div>
     </div>
 
@@ -345,7 +345,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.3 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 5.4 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -952,6 +952,8 @@ function fenetrePeriode(){
 
 function rendreGraphe(){
   var c = $("#graphe"); c.innerHTML = "";
+  var t = $("#titre-courbe");
+  if (t) t.textContent = "Glycémie moyenne sur " + pluriel(periode, "jour");
   var f = fenetrePeriode();
   var l = etat.mesures.filter(function(m){ return m.ts >= f[0] && m.ts <= f[1]; })
                       .sort(function(a,b){ return a.ts - b.ts; });
