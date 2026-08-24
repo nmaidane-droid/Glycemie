@@ -222,13 +222,15 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v2.9</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v3.0</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
 <main>
   <!-- ================= SUIVI ================= -->
   <section class="vue actif" id="v-suivi">
+    <button class="gros" id="btn-envoyer">Envoyer mon rapport</button>
+    <div class="aide" style="margin:8px 0 16px">Les 90 derniers jours, en PDF, avec les graphiques.</div>
     <div class="carte" id="rappel-sauvegarde" hidden style="border-color:rgba(61,59,209,.4);background:rgba(61,59,209,.04)">
       <div class="titre-bloc">Fichier de secours</div>
       <p style="margin:0 0 12px;font-size:13.5px" id="rappel-texte"></p>
@@ -332,7 +334,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 2.9 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 3.0 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1260,6 +1262,263 @@ function rendreRapport(){
 }
 $("#btn-rapport").addEventListener("click", rendreRapport);
 $("#btn-imprimer").addEventListener("click", function(){ rendreRapport(); setTimeout(function(){ window.print(); }, 250); });
+
+/* ============ rapport PDF (vectoriel, sans bibliothèque) ============ */
+var PAGE_L = 595.28, PAGE_H = 841.89, MARGE = 42;
+
+function pdfLatin(s){
+  return String(s)
+    .replace(/[\u2014\u2013]/g, "-")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, "...")
+    .replace(/[^\x00-\xFF]/g, "?");
+}
+function pdfEchappe(s){
+  return pdfLatin(s).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+// largeur approchée en Helvetica, suffisante pour aligner à droite
+function pdfLargeur(txt, taille){
+  var t = pdfLatin(txt), l = 0;
+  for (var i=0; i<t.length; i++){
+    var c = t[i];
+    if (c === " ") l += 0.278;
+    else if (c >= "0" && c <= "9") l += 0.556;
+    else if (c >= "A" && c <= "Z") l += 0.667;
+    else if (".,:;'|!i".indexOf(c) !== -1) l += 0.28;
+    else l += 0.52;
+  }
+  return l*taille;
+}
+function hexRGB(hex){
+  return [parseInt(hex.slice(1,3),16)/255, parseInt(hex.slice(3,5),16)/255, parseInt(hex.slice(5,7),16)/255];
+}
+
+function Toile(){
+  this.ops = [];
+}
+Toile.prototype.couleur = function(hex, trait){
+  var c = hexRGB(hex);
+  this.ops.push(c[0].toFixed(3)+" "+c[1].toFixed(3)+" "+c[2].toFixed(3)+(trait ? " RG" : " rg"));
+  return this;
+};
+Toile.prototype.rect = function(x, y, w, h){
+  this.ops.push(x.toFixed(2)+" "+y.toFixed(2)+" "+w.toFixed(2)+" "+h.toFixed(2)+" re f");
+  return this;
+};
+Toile.prototype.cadre = function(x, y, w, h, ep){
+  this.ops.push((ep||0.6).toFixed(2)+" w "+x.toFixed(2)+" "+y.toFixed(2)+" "+w.toFixed(2)+" "+h.toFixed(2)+" re S");
+  return this;
+};
+Toile.prototype.ligne = function(x1, y1, x2, y2, ep, pointille){
+  this.ops.push((pointille ? "[2 2] 0 d " : "[] 0 d ") + (ep||0.6).toFixed(2)+" w "+
+    x1.toFixed(2)+" "+y1.toFixed(2)+" m "+x2.toFixed(2)+" "+y2.toFixed(2)+" l S");
+  return this;
+};
+Toile.prototype.polyligne = function(pts, ep){
+  if (!pts.length) return this;
+  var s = "[] 0 d " + (ep||1).toFixed(2)+" w "+pts[0][0].toFixed(2)+" "+pts[0][1].toFixed(2)+" m";
+  for (var i=1;i<pts.length;i++) s += " "+pts[i][0].toFixed(2)+" "+pts[i][1].toFixed(2)+" l";
+  this.ops.push(s+" S");
+  return this;
+};
+Toile.prototype.disque = function(x, y, r){
+  var k = 0.5523*r;
+  this.ops.push(
+    (x+r).toFixed(2)+" "+y.toFixed(2)+" m "+
+    (x+r).toFixed(2)+" "+(y+k).toFixed(2)+" "+(x+k).toFixed(2)+" "+(y+r).toFixed(2)+" "+x.toFixed(2)+" "+(y+r).toFixed(2)+" c "+
+    (x-k).toFixed(2)+" "+(y+r).toFixed(2)+" "+(x-r).toFixed(2)+" "+(y+k).toFixed(2)+" "+(x-r).toFixed(2)+" "+y.toFixed(2)+" c "+
+    (x-r).toFixed(2)+" "+(y-k).toFixed(2)+" "+(x-k).toFixed(2)+" "+(y-r).toFixed(2)+" "+x.toFixed(2)+" "+(y-r).toFixed(2)+" c "+
+    (x+k).toFixed(2)+" "+(y-r).toFixed(2)+" "+(x+r).toFixed(2)+" "+(y-k).toFixed(2)+" "+(x+r).toFixed(2)+" "+y.toFixed(2)+" c f");
+  return this;
+};
+Toile.prototype.texte = function(txt, x, y, taille, gras, hex, align){
+  var l = pdfLargeur(txt, taille);
+  var px = (align === "droite") ? x - l : (align === "centre" ? x - l/2 : x);
+  this.couleur(hex || "#171F35");
+  this.ops.push("BT /"+(gras ? "F2" : "F1")+" "+taille+" Tf "+px.toFixed(2)+" "+y.toFixed(2)+" Td ("+pdfEchappe(txt)+") Tj ET");
+  return this;
+};
+Toile.prototype.flux = function(){ return this.ops.join("\n"); };
+
+function assemblerPDF(contenu, titre){
+  var objets = [];
+  objets[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objets[2] = "<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
+  objets[3] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+PAGE_L.toFixed(2)+" "+PAGE_H.toFixed(2)+"] " +
+              "/Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>";
+  objets[4] = "<< /Length "+contenu.length+" >>\nstream\n"+contenu+"\nendstream";
+  objets[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objets[6] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+  objets[7] = "<< /Title ("+pdfEchappe(titre)+") /Producer (Glycemie - carnet de suivi) >>";
+
+  var out = "%PDF-1.4\n", offsets = [];
+  for (var i=1; i<objets.length; i++){
+    offsets[i] = out.length;
+    out += i+" 0 obj\n"+objets[i]+"\nendobj\n";
+  }
+  var debutXref = out.length;
+  out += "xref\n0 "+objets.length+"\n0000000000 65535 f \n";
+  for (var j=1; j<objets.length; j++){
+    out += ("0000000000"+offsets[j]).slice(-10)+" 00000 n \n";
+  }
+  out += "trailer\n<< /Size "+objets.length+" /Root 1 0 R /Info 7 0 R >>\nstartxref\n"+debutXref+"\n%%EOF";
+
+  var bytes = new Uint8Array(out.length);
+  for (var k=0; k<out.length; k++) bytes[k] = out.charCodeAt(k) & 0xFF;
+  return bytes;
+}
+
+/* ---------- mise en page du rapport ---------- */
+function construireRapportPDF(l, jours){
+  var r = etat.reglages, t = new Toile();
+  var G = "#69748F", TRAIT = "#D9DEE8";
+  var x0 = MARGE, x1 = PAGE_L - MARGE, y = PAGE_H - MARGE;
+
+  var moy = moyenne(l);
+  var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
+  l.forEach(function(m){ cpt[classe(m.mg)]++; });
+  var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
+  var d1 = new Date(l[0].ts), d2 = new Date(l[l.length-1].ts);
+  var joursCouverts = Math.max(1, Math.round((d2 - d1)/86400000) + 1);
+
+  // en-tête
+  t.texte("Rapport de suivi glycémique", x0, y, 17, true);
+  y -= 16;
+  t.texte((r.nom ? r.nom + "  ·  " : "") + d1.toLocaleDateString("fr-FR") + " au " + d2.toLocaleDateString("fr-FR") +
+          "  ·  " + pluriel(l.length, "mesure") + " sur " + pluriel(joursCouverts, "jour"), x0, y, 9, false, G);
+  y -= 12;
+  t.couleur(TRAIT, true).ligne(x0, y, x1, y, 0.8);
+  y -= 26;
+
+  // synthèse
+  var lignes = [
+    ["Glycémie moyenne", affiche(moy) + " " + unite()],
+    ["GMI de la période", pourcent(3.31 + 0.02392*moy)],
+    ["Cible retenue", affiche(r.cibleBas) + " - " + affiche(r.cibleHaut) + " " + unite()],
+    ["Mesures par jour", (l.length/joursCouverts).toFixed(1).replace(".", ",")]
+  ];
+  if (uni) lignes.push(["Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".", ",") + " U"]);
+  lignes.forEach(function(ln){
+    t.texte(ln[0], x0, y, 11, false, "#3A4356");
+    t.texte(ln[1], x1, y, 11, true, null, "droite");
+    y -= 8;
+    t.couleur(TRAIT, true).ligne(x0, y, x1, y, 0.4);
+    y -= 14;
+  });
+
+  // répartition
+  y -= 12;
+  t.texte("RÉPARTITION DES GLYCÉMIES", x0, y, 9, true, G);
+  y -= 20;
+  var pas = estMmol() ? 0.1 : 1;
+  var plages = [
+    { cle:"hypo",     lab:"Moins de " + affiche(r.hypo) },
+    { cle:"bas",      lab:affiche(r.hypo) + " - " + affiche(r.cibleBas - pas) },
+    { cle:"cible",    lab:affiche(r.cibleBas) + " - " + affiche(r.cibleHaut) + "  (cible)" },
+    { cle:"haut",     lab:affiche(r.cibleHaut + pas) + " - " + affiche(r.hyper - pas) },
+    { cle:"treshaut", lab:affiche(r.hyper) + " et plus" }
+  ];
+  var maxi = Math.max.apply(null, plages.map(function(p){ return cpt[p.cle]; }));
+  var pisteX = x0 + 148, pisteL = x1 - 172 - pisteX;
+  plages.forEach(function(p){
+    var n = cpt[p.cle], pc = Math.round(n/l.length*100);
+    t.texte(p.lab, x0, y, 10, false, "#3A4356");
+    t.couleur("#EFF1F6").rect(pisteX, y-3, pisteL, 13);
+    if (n) t.couleur(COULEUR[p.cle]).rect(pisteX, y-3, Math.max(2, pisteL*(n/maxi)), 13);
+    t.texte(pc + " %", x1 - 74, y, 10, true, null, "droite");
+    t.texte(pluriel(n, "mesure"), x1, y, 8.5, false, G, "droite");
+    y -= 22;
+  });
+
+  // courbe : moyenne par jour
+  y -= 16;
+  t.texte("COURBE — MOYENNE PAR JOUR", x0, y, 9, true, G);
+  y -= 8;
+
+  var parJour = {}, ordre = [];
+  l.forEach(function(m){
+    var d = new Date(m.ts); d.setHours(0,0,0,0);
+    var k = d.getTime();
+    if (!parJour[k]){ parJour[k] = { s:0, n:0, ts:k }; ordre.push(k); }
+    parJour[k].s += m.mg; parJour[k].n++;
+  });
+  ordre.sort(function(a,b){ return a-b; });
+  var pts = ordre.map(function(k){ return { ts:k, mg:parJour[k].s/parJour[k].n }; });
+
+  var gH = 300, gB = y - gH, gG = x0 + 34, gD = x1;
+  var vals = pts.map(function(p){ return p.mg; });
+  var vmin = Math.min.apply(null, vals.concat([r.cibleBas])) * 0.85;
+  var vmax = Math.max.apply(null, vals.concat([r.cibleHaut])) * 1.12;
+  var t0 = pts[0].ts, t1 = pts[pts.length-1].ts; if (t1 === t0) t1 = t0 + 86400000;
+  function X(v){ return gG + (v - t0)/(t1 - t0) * (gD - gG); }
+  function Y(v){ return gB + (v - vmin)/(vmax - vmin) * gH; }
+
+  t.couleur("#FFFFFF").rect(gG, gB, gD-gG, gH);
+  t.couleur("#DCF0E6").rect(gG, Y(r.cibleBas), gD-gG, Y(r.cibleHaut)-Y(r.cibleBas));
+  t.couleur("#1E9E6A", true).ligne(gG, Y(r.cibleBas), gD, Y(r.cibleBas), 0.5, true);
+  t.couleur("#1E9E6A", true).ligne(gG, Y(r.cibleHaut), gD, Y(r.cibleHaut), 0.5, true);
+  t.couleur("#E5484D", true).ligne(gG, Y(r.hypo), gD, Y(r.hypo), 0.5, true);
+  [r.hypo, r.cibleBas, r.cibleHaut].forEach(function(v){
+    t.texte(affiche(v), gG - 5, Y(v) - 3, 7.5, false, G, "droite");
+  });
+  t.couleur(TRAIT, true).ligne(gG, gB, gD, gB, 0.6).ligne(gG, gB, gG, gB+gH, 0.6);
+
+  if (pts.length > 1){
+    t.couleur("#3D3BD1", true).polyligne(pts.map(function(p){ return [X(p.ts), Y(p.mg)]; }), 1.1);
+  }
+  pts.forEach(function(p){
+    t.couleur(COULEUR[classe(p.mg)]).disque(X(p.ts), Y(p.mg), pts.length > 45 ? 1.6 : 2.4);
+  });
+  t.texte(d1.toLocaleDateString("fr-FR"), gG, gB - 12, 7.5, false, G);
+  t.texte(d2.toLocaleDateString("fr-FR"), gD, gB - 12, 7.5, false, G, "droite");
+  t.texte("Bande verte : plage cible. Ligne rouge : seuil d'hypoglycémie. Un point = moyenne du jour.",
+          x0, gB - 26, 8, false, G);
+
+  // pied de page
+  t.couleur(TRAIT, true).ligne(x0, MARGE + 26, x1, MARGE + 26, 0.5);
+  t.texte("Généré le " + new Date().toLocaleDateString("fr-FR") + " par Glycemie - carnet de suivi. " +
+          "Document d'auto-surveillance, ne remplace pas un avis médical.",
+          x0, MARGE + 12, 7.5, false, G);
+
+  return assemblerPDF(t.flux(), "Rapport de suivi glycémique");
+}
+
+function telechargerBlob(blob, nom){
+  var u = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = u; a.download = nom;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); }, 400);
+}
+
+function envoyerRapport(){
+  var lim = Date.now() - 90*86400000;
+  var l = etat.mesures.filter(function(m){ return m.ts >= lim; }).sort(function(a,b){ return a.ts - b.ts; });
+  if (l.length < 2){ toast("Il faut au moins deux mesures pour établir un rapport."); return; }
+
+  var bytes;
+  try { bytes = construireRapportPDF(l, 90); }
+  catch(e){ toast("Rapport impossible à générer."); return; }
+
+  var blob = new Blob([bytes], { type:"application/pdf" });
+  var nom = "rapport-glycemie-" + new Date().toISOString().slice(0,10) + ".pdf";
+  var fichier = null;
+  try { fichier = new File([blob], nom, { type:"application/pdf" }); } catch(e){}
+
+  if (fichier && navigator.share && navigator.canShare && navigator.canShare({ files:[fichier] })){
+    navigator.share({ files:[fichier], title:"Rapport de glycémie" })
+      .catch(function(err){
+        if (err && err.name === "AbortError") return;
+        telechargerBlob(blob, nom);
+        toast("Rapport téléchargé dans vos fichiers.");
+      });
+  } else {
+    telechargerBlob(blob, nom);
+    toast("Rapport téléchargé — joignez-le depuis WhatsApp.");
+  }
+}
+$("#btn-envoyer").addEventListener("click", envoyerRapport);
 
 /* ============ démarrage ============ */
 function sauver(){
