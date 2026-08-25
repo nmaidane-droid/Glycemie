@@ -250,7 +250,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.7</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.8</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -264,12 +264,12 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
     <div class="carte derniere" id="bloc-derniere"></div>
 
-    <div class="grille" id="bloc-stats"></div>
-
-    <div class="carte" style="margin-top:14px">
+    <div class="carte">
       <div class="titre-bloc">Période analysée</div>
       <div class="periodes" id="periodes"></div>
     </div>
+
+    <div class="grille" id="bloc-stats" style="margin-bottom:14px"></div>
 
     <div class="carte">
       <div class="titre-bloc" id="titre-repartition">Répartition des glycémies</div>
@@ -285,11 +285,12 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc" id="titre-journee">Glycémies de la journée</div>
+      <div class="titre-bloc" id="titre-journee">Glycémies moyennes de la journée</div>
+      <div class="quand" id="profil-quand"></div>
       <div class="colonnes" id="profil-colonnes"></div>
       <div class="zones" id="profil-heures"></div>
       <div id="profil"></div>
-      <div class="avis">Chaque colonne est un relevé de la dernière journée mesurée, avec son heure.</div>
+      <div class="avis">Moyenne de chaque moment de la journée sur la période choisie. Utile pour repérer quand la glycémie décroche.</div>
     </div>
   </section>
 
@@ -385,7 +386,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.7 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.8 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1033,54 +1034,40 @@ function rendreGraphe(){
 
 function rendreProfil(){
   var c = $("#profil"); c.innerHTML = "";
-  var titre = $("#titre-journee");
+  var cols = $("#profil-colonnes"), noms = $("#profil-heures");
+  cols.innerHTML = ""; noms.innerHTML = "";
+  var l = surPeriode(periode);
+  $("#profil-quand").textContent = "Moyenne de chaque moment sur " + pluriel(periode, "jour");
 
-  // le jour le plus récent qui comporte des mesures
-  var jours = {}, cles = [];
-  etat.mesures.forEach(function(m){
-    var d = new Date(m.ts); d.setHours(0,0,0,0);
-    var k = d.getTime();
-    if (!jours[k]){ jours[k] = []; cles.push(k); }
-    jours[k].push(m);
-  });
-  if (!cles.length){
-    if (titre) titre.textContent = "Glycémies de la journée";
-    $("#profil-colonnes").innerHTML = "";
-    $("#profil-heures").innerHTML = "";
-    c.appendChild(el("div","vide","Aucune mesure enregistrée."));
+  if (!l.length){
+    c.appendChild(el("div","vide","Aucune mesure sur cette période."));
     return;
   }
-  cles.sort(function(a,b){ return b-a; });
-  var k = cles[0];
-  var l = jours[k].slice().sort(function(a,b){ return a.ts - b.ts; });
 
-  var r = etat.reglages;
-  var estAujourdhui = k === new Date(new Date().setHours(0,0,0,0)).getTime();
-  if (titre){
-    titre.textContent = estAujourdhui ? "Glycémies de la journée"
-      : "Glycémies du " + new Date(k).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
-  }
+  var parMoment = moyennesParMoment(l);
+  var vals = parMoment.map(function(p){ return p.moy || 0; });
+  var plafond = Math.max.apply(null, vals.concat([etat.reglages.cibleHaut])) * 1.12;
 
-  // mêmes colonnes que la répartition : une par mesure de la journée
-  var cols = $("#profil-colonnes"), heures = $("#profil-heures");
-  cols.innerHTML = ""; heures.innerHTML = "";
-  var vals = l.map(function(m){ return m.mg; });
-  var plafond = Math.max.apply(null, vals.concat([r.cibleHaut])) * 1.12;
-  l.forEach(function(m){
+  parMoment.forEach(function(p){
     var col = el("div","col");
-    var couleur = COULEUR[classe(m.mg)];
-    col.appendChild(el("div","v", affiche(m.mg))).style.color = couleur;
-    var barre = el("div","barre");
-    barre.style.height = Math.max(6, (m.mg/plafond)*118) + "px";
-    barre.style.background = couleur;
-    col.appendChild(barre);
+    if (p.moy !== null){
+      var coul = COULEUR[classe(p.moy)];
+      col.appendChild(el("div","v", affiche(p.moy))).style.color = coul;
+      var barre = el("div","barre");
+      barre.style.height = Math.max(6, (p.moy/plafond)*118) + "px";
+      barre.style.background = coul;
+      col.appendChild(barre);
+    } else {
+      col.appendChild(el("div","v","—")).style.color = "var(--trait)";
+      col.appendChild(el("div","vide-col"));
+    }
     cols.appendChild(col);
 
     var z = el("div");
-    z.appendChild(el("b", null, heure(m.ts)));
-    heures.appendChild(z);
+    z.appendChild(el("b", null, p.nom));
+    z.appendChild(document.createTextNode(p.n ? pluriel(p.n, "mesure") : "aucune"));
+    noms.appendChild(z);
   });
-
 }
 
 /* ============ journal ============ */
