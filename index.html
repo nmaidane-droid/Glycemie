@@ -250,7 +250,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.2</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.3</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -383,7 +383,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.2 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.3 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1639,17 +1639,23 @@ function rendreRapport(){
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
   tr("Mesures par jour relevé", (l.length/jours).toFixed(1).replace(".",","));
   if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
-  resumeTraitement().forEach(function(t, i){
-    tr(i === 0 ? "Traitement habituel" : "", t.nom);
-    var rf = document.createElement("tr");
-    var vide = document.createElement("td");
-    var freq = document.createElement("td");
-    freq.textContent = t.freq;
-    freq.style.textAlign = "right";
-    freq.style.color = "var(--ardoise)";
-    freq.style.fontSize = "12px";
-    rf.appendChild(vide); rf.appendChild(freq); tb.appendChild(rf);
-  });
+  var trts = resumeTraitement();
+  if (trts.length){
+    tr("Traitement habituel", "");
+    trts.forEach(function(t){
+      var r = document.createElement("tr");
+      var a = document.createElement("td");
+      a.textContent = t.nom;
+      a.style.paddingLeft = "16px";
+      a.style.fontWeight = "600";
+      var b2 = document.createElement("td");
+      b2.textContent = t.freq;
+      b2.style.textAlign = "right";
+      b2.style.color = "var(--ardoise)";
+      b2.style.fontSize = "12.5px";
+      r.appendChild(a); r.appendChild(b2); tb.appendChild(r);
+    });
+  }
   e.appendChild(tb);
   c.appendChild(e);
 
@@ -1864,14 +1870,15 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
     ["Mesures par jour relevé", (l.length/joursReleves).toFixed(1).replace(".", ",")]
   ];
   if (uni) lignes.push(["Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".", ",") + " U"]);
-  resumeTraitement().forEach(function(t, i){
-    lignes.push([i === 0 ? "Traitement habituel" : "", t.nom]);
-    lignes.push(["", t.freq, true]);
-  });
+  var trts = resumeTraitement();
+  if (trts.length){
+    lignes.push(["Traitement habituel", ""]);
+    trts.forEach(function(t){ lignes.push([t.nom, t.freq, "trt"]); });
+  }
 
   // hauteurs des trois cartes
   var hLignes = 0;
-  lignes.forEach(function(ln){ hLignes += (ln[2] === true) ? 14 : 17; });
+  lignes.forEach(function(ln){ hLignes += (ln[2] === "trt") ? 15 : 17; });
   var hSynthese = P + 17 + 13 + 10 + hLignes + P - 4;
   var hRepart   = P + 11 + 8 + 13 + 104 + 44 + P;
   var hCourbe   = 281;
@@ -1895,14 +1902,18 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
           X0 + P, cy, 8.5, false, ARDOISE);
   cy -= 14;
   lignes.forEach(function(ln, i){
-    var sous = ln[2] === true;
-    var taille = sous ? 8.5 : (pdfLargeur(ln[1], 9.75) > W - 2*P - 150 ? 8 : 9.75);
-    if (ln[0]) t.texte(ln[0], X0 + P, cy - 10, 9.75, false, ENCRE);
-    t.texte(ln[1], X1 - P, cy - 10, taille, !sous, sous ? ARDOISE : ENCRE, "droite");
-    cy -= sous ? 14 : 17;
-    var dernier = (i === lignes.length - 1);
-    var suivantEstSous = !dernier && lignes[i+1][2] === true;
-    if (!dernier && !suivantEstSous){
+    var estTrt = ln[2] === "trt";
+    if (estTrt){
+      // nom et dose à gauche, fréquence à droite, le tout légèrement décalé
+      t.texte(ln[0], X0 + P + 14, cy - 10, 9.25, true, ENCRE);
+      t.texte(ln[1], X1 - P, cy - 10, 8.75, false, ARDOISE, "droite");
+    } else {
+      var taille = pdfLargeur(ln[1], 9.75) > W - 2*P - 150 ? 8 : 9.75;
+      t.texte(ln[0], X0 + P, cy - 10, 9.75, false, ENCRE);
+      if (ln[1]) t.texte(ln[1], X1 - P, cy - 10, taille, true, ENCRE, "droite");
+    }
+    cy -= estTrt ? 15 : 17;
+    if (i < lignes.length - 1){
       t.couleur(TRAIT, true).ligne(X0 + P, cy - 3, X1 - P, cy - 3, 0.5);
     }
   });
