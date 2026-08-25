@@ -209,6 +209,7 @@ nav button.actif .ico{background:var(--indigo)}
 nav button.actif svg{stroke:#fff}
 nav button.actif{color:var(--indigo)}
 nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fab[hidden]{display:none}
 .fab{
   position:fixed;right:18px;bottom:calc(88px + var(--safe-b));z-index:31;
   width:56px;height:56px;border-radius:19px;background:var(--indigo);color:#fff;
@@ -254,7 +255,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.0</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.1</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -391,7 +392,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.0 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.1 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -642,6 +643,7 @@ function ouvrirVue(nom, sansHistorique){
   document.querySelectorAll("nav button").forEach(function(b){ b.classList.toggle("actif", b.dataset.vue===nom); });
   window.scrollTo(0,0);
   vueCourante = nom;
+  $("#fab").hidden = (nom === "reglages");
   if (nom === "journal") rendreJournal();
   if (!sansHistorique && nom !== "suivi"){
     try { history.pushState({ vue:nom }, ""); } catch(e){}
