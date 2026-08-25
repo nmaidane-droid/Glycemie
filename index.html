@@ -250,7 +250,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.3</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.5</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -383,7 +383,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.3 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.5 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1614,7 +1614,6 @@ function rendreRapport(){
   var moy = moyenne(l);
   var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
-  var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
   var vusJours = {};
   l.forEach(function(m){ vusJours[new Date(m.ts).toDateString()] = 1; });
   var jours = Math.max(1, Object.keys(vusJours).length);
@@ -1638,7 +1637,6 @@ function rendreRapport(){
   tr("GMI de la période", pourcent(3.31 + 0.02392*moy));
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
   tr("Mesures par jour relevé", (l.length/jours).toFixed(1).replace(".",","));
-  if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
   var trts = resumeTraitement();
   if (trts.length){
     tr("Traitement habituel", "");
@@ -1646,7 +1644,7 @@ function rendreRapport(){
       var r = document.createElement("tr");
       var a = document.createElement("td");
       a.textContent = t.nom;
-      a.style.paddingLeft = "16px";
+      a.style.paddingLeft = "30px";
       a.style.fontWeight = "600";
       var b2 = document.createElement("td");
       b2.textContent = t.freq;
@@ -1855,7 +1853,6 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   var moy = moyenne(l);
   var cpt = { hypo:0, bas:0, cible:0, haut:0, treshaut:0 };
   l.forEach(function(m){ cpt[classe(m.mg)]++; });
-  var uni = 0; l.forEach(function(m){ uni += (m.rapide||0)+(m.lente||0); });
   var d1 = new Date(debutFenetre), d2 = new Date(finFenetre);
   var joursFenetre = Math.max(1, Math.round((finFenetre - debutFenetre)/86400000));
   var vus = {};
@@ -1869,7 +1866,6 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
     ["Cible retenue", affiche(r.cibleBas) + "–" + affiche(r.cibleHaut) + " " + unite()],
     ["Mesures par jour relevé", (l.length/joursReleves).toFixed(1).replace(".", ",")]
   ];
-  if (uni) lignes.push(["Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".", ",") + " U"]);
   var trts = resumeTraitement();
   if (trts.length){
     lignes.push(["Traitement habituel", ""]);
@@ -1905,7 +1901,7 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
     var estTrt = ln[2] === "trt";
     if (estTrt){
       // nom et dose à gauche, fréquence à droite, le tout légèrement décalé
-      t.texte(ln[0], X0 + P + 14, cy - 10, 9.25, true, ENCRE);
+      t.texte(ln[0], X0 + P + 26, cy - 10, 9.25, true, ENCRE);
       t.texte(ln[1], X1 - P, cy - 10, 8.75, false, ARDOISE, "droite");
     } else {
       var taille = pdfLargeur(ln[1], 9.75) > W - 2*P - 150 ? 8 : 9.75;
