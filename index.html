@@ -255,7 +255,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.8</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.9</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -392,7 +392,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.8 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.9 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         <button class="gros secondaire" id="btn-notice" style="margin-bottom:14px">Télécharger le mode d'emploi</button>
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
@@ -954,13 +954,22 @@ function groupesZones(l){
     haut: affiche(r.cibleHaut + pas) + "–" + affiche(r.hyper - pas),
     treshaut: "≥ " + affiche(r.hyper)
   };
-  return ["hypo","bas","cible","haut","treshaut"].map(function(cle){
+  var zones = ["hypo","bas","cible","haut","treshaut"].map(function(cle){
     var s = l.filter(function(m){ return classe(m.mg) === cle; });
     return {
       nom: noms[cle], bornes: bornes[cle], cle: cle, couleur: COULEUR[cle], n: s.length,
       part: l.length ? s.length/l.length*100 : 0
     };
   });
+
+  // arrondis à somme garantie de 100 % : méthode du plus fort reste
+  var total = 0;
+  zones.forEach(function(z){ z.pc = Math.floor(z.part); total += z.pc; });
+  var manque = (l.length ? 100 : 0) - total;
+  zones.slice()
+    .sort(function(a, b){ return (b.part - Math.floor(b.part)) - (a.part - Math.floor(a.part)); })
+    .forEach(function(z){ if (manque > 0){ z.pc += 1; manque -= 1; } });
+  return zones;
 }
 
 // colonnes de répartition, communes au tableau de bord, au rapport et au PDF
@@ -969,7 +978,7 @@ function rendreColonnes(cols, zones, l, avecBornes){
   groupesZones(l).forEach(function(g){
     var c = el("div","col");
     if (g.n){
-      c.appendChild(el("div","v", Math.round(g.part) + " %")).style.color = g.couleur;
+      c.appendChild(el("div","v", g.pc + " %")).style.color = g.couleur;
       var b = el("div","barre");
       b.style.height = Math.max(4, (g.part/100)*118) + "px";
       b.style.background = g.couleur;
@@ -2074,7 +2083,7 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
     var hb = g.n ? Math.max(3, (g.part/100)*hautCol) : 2;
     t.couleur(g.n ? g.couleur : "#E4E7EF");
     t.rectArrondi(x, basCol + 26, largeurCol, hb, 3.2, true, false);
-    t.texte(g.n ? Math.round(g.part) + " %" : "—", x + largeurCol/2, basCol + 30 + hb, 9.4, true,
+    t.texte(g.n ? g.pc + " %" : "—", x + largeurCol/2, basCol + 30 + hb, 9.4, true,
             g.n ? g.couleur : ARDOISE, "centre");
     t.texte(g.nom, x + largeurCol/2, basCol + 13, 9, true, ENCRE, "centre");
     t.texte(g.bornes, x + largeurCol/2, basCol + 3, 8, false, ARDOISE, "centre");
