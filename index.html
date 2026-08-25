@@ -134,6 +134,10 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 .ligne .d b{display:block;font-size:13px;font-weight:600}
 .ligne .d small{color:var(--ardoise);font-size:11.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .puce{width:4px;align-self:stretch;border-radius:3px;background:var(--trait)}
+.ligne.modifiable{border-color:rgba(61,59,209,.35)}
+.ligne .modif{flex:0 0 auto;width:26px;height:26px;border-radius:8px;background:rgba(61,59,209,.09);
+  display:flex;align-items:center;justify-content:center}
+.ligne .modif svg{width:15px;height:15px;stroke:var(--indigo);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- traitements ---------- */
 .trt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--trait);border-radius:12px;background:var(--surface);margin-bottom:8px}
@@ -246,7 +250,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.0</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.2</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -379,7 +383,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.0 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.2 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1094,9 +1098,20 @@ function rendreJournal(){
   });
 }
 
+function derniereMesureId(){
+  var recent = null;
+  etat.mesures.forEach(function(m){ if (!recent || m.ts > recent.ts) recent = m; });
+  return recent ? recent.id : null;
+}
+
 function ligneJournal(i){
-  var b = document.createElement("button");
-  b.className = "ligne";
+  var modifiable = (i.t === "g" && i.o.id === derniereMesureId());
+  var b = document.createElement(modifiable ? "button" : "div");
+  b.className = "ligne" + (modifiable ? " modifiable" : "");
+  if (modifiable){
+    b.type = "button";
+    b.addEventListener("click", function(){ ouvrirFeuille("glycemie", i.o); });
+  }
   var p = el("div","puce");
   b.appendChild(p);
   b.appendChild(el("div","h", heure(i.ts)));
@@ -1108,17 +1123,15 @@ function ligneJournal(i){
     var d = el("div","d");
     d.appendChild(el("b", null, m.contexte));
     var bits = [];
-    (m.traitements || []).forEach(function(p){
-      bits.push(p.nom + " " + p.dose + (p.type === "med" ? "" : " U"));
-    });
-    if (!m.traitements && m.rapide) bits.push(m.rapide + " U rapide");
-    if (!m.traitements && m.lente) bits.push(m.lente + " U lente");
     if (m.glucides) bits.push(m.glucides + " g glucides");
-    if (m.medic) bits.push(m.medic);
     if (m.note) bits.push(m.note);
     d.appendChild(el("small", null, bits.join(" · ") || unite()));
     b.appendChild(d);
-    b.addEventListener("click", function(){ ouvrirFeuille("glycemie", m); });
+    if (modifiable){
+      var crayon = el("div","modif");
+      crayon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+      b.appendChild(crayon);
+    }
   } else if (i.t === "v"){
     p.style.background = "#3D3BD1";
     var d2 = el("div","d");
@@ -1129,14 +1142,12 @@ function ligneJournal(i){
     if (i.o.pouls) t.push(i.o.pouls + " bpm");
     d2.appendChild(el("small", null, t.join(" · ")));
     b.appendChild(d2);
-    b.addEventListener("click", function(){ if (confirm("Supprimer cette mesure ?")) { retirer("vitaux", i.o.id); } });
   } else {
     p.style.background = "#69748F";
     var d3 = el("div","d");
     d3.appendChild(el("b", null, i.o.type || "Activité"));
     d3.appendChild(el("small", null, (i.o.duree ? i.o.duree + " min · " : "") + (i.o.intensite || "")));
     b.appendChild(d3);
-    b.addEventListener("click", function(){ if (confirm("Supprimer cette activité ?")) { retirer("activites", i.o.id); } });
   }
   return b;
 }
@@ -1309,7 +1320,7 @@ function libelleTrt(t){
 }
 function resumeTraitement(){
   return etat.reglages.traitements.map(function(t){
-    return libelleTrt(t) + " (" + t.moments.map(nomMoment).join(", ").toLowerCase() + ")";
+    return { nom: libelleTrt(t), freq: t.moments.map(nomMoment).join(", ").toLowerCase() };
   });
 }
 
@@ -1628,7 +1639,17 @@ function rendreRapport(){
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
   tr("Mesures par jour relevé", (l.length/jours).toFixed(1).replace(".",","));
   if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
-  resumeTraitement().forEach(function(txt, i){ tr(i === 0 ? "Traitement habituel" : "", txt); });
+  resumeTraitement().forEach(function(t, i){
+    tr(i === 0 ? "Traitement habituel" : "", t.nom);
+    var rf = document.createElement("tr");
+    var vide = document.createElement("td");
+    var freq = document.createElement("td");
+    freq.textContent = t.freq;
+    freq.style.textAlign = "right";
+    freq.style.color = "var(--ardoise)";
+    freq.style.fontSize = "12px";
+    rf.appendChild(vide); rf.appendChild(freq); tb.appendChild(rf);
+  });
   e.appendChild(tb);
   c.appendChild(e);
 
@@ -1843,10 +1864,15 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
     ["Mesures par jour relevé", (l.length/joursReleves).toFixed(1).replace(".", ",")]
   ];
   if (uni) lignes.push(["Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".", ",") + " U"]);
-  resumeTraitement().forEach(function(txt, i){ lignes.push([i === 0 ? "Traitement habituel" : "", txt]); });
+  resumeTraitement().forEach(function(t, i){
+    lignes.push([i === 0 ? "Traitement habituel" : "", t.nom]);
+    lignes.push(["", t.freq, true]);
+  });
 
   // hauteurs des trois cartes
-  var hSynthese = P + 17 + 13 + 10 + lignes.length*17 + P - 4;
+  var hLignes = 0;
+  lignes.forEach(function(ln){ hLignes += (ln[2] === true) ? 14 : 17; });
+  var hSynthese = P + 17 + 13 + 10 + hLignes + P - 4;
   var hRepart   = P + 11 + 8 + 13 + 104 + 44 + P;
   var hCourbe   = 281;
 
@@ -1869,11 +1895,14 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
           X0 + P, cy, 8.5, false, ARDOISE);
   cy -= 14;
   lignes.forEach(function(ln, i){
-    var taille = pdfLargeur(ln[1], 9.75) > W - 2*P - 150 ? 8 : 9.75;
-    t.texte(ln[0], X0 + P, cy - 10, 9.75, false, ENCRE);
-    t.texte(ln[1], X1 - P, cy - 10, taille, true, ENCRE, "droite");
-    cy -= 17;
-    if (i < lignes.length - 1){
+    var sous = ln[2] === true;
+    var taille = sous ? 8.5 : (pdfLargeur(ln[1], 9.75) > W - 2*P - 150 ? 8 : 9.75);
+    if (ln[0]) t.texte(ln[0], X0 + P, cy - 10, 9.75, false, ENCRE);
+    t.texte(ln[1], X1 - P, cy - 10, taille, !sous, sous ? ARDOISE : ENCRE, "droite");
+    cy -= sous ? 14 : 17;
+    var dernier = (i === lignes.length - 1);
+    var suivantEstSous = !dernier && lignes[i+1][2] === true;
+    if (!dernier && !suivantEstSous){
       t.couleur(TRAIT, true).ligne(X0 + P, cy - 3, X1 - P, cy - 3, 0.5);
     }
   });
