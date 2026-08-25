@@ -255,7 +255,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.7</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.8</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -392,7 +392,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.7 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.8 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         <button class="gros secondaire" id="btn-notice" style="margin-bottom:14px">Télécharger le mode d'emploi</button>
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
@@ -2196,7 +2196,9 @@ $("#btn-envoyer").addEventListener("click", envoyerRapport);
 
 $("#btn-notice").addEventListener("click", function(){
   // le guide illustré est livré avec l'application et mis en cache pour l'usage hors ligne
-  window.open("glycemie-mode-emploi.pdf", "_blank");
+  // horodatage en paramètre : le fichier est toujours redemandé au serveur,
+  // aucun cache de navigateur ou de service worker ne peut servir une version périmée
+  window.open("glycemie-mode-emploi.pdf?v=" + Date.now(), "_blank");
 });
 
 /* ============ démarrage ============ */
