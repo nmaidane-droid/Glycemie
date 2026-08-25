@@ -135,6 +135,23 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 .ligne .d small{color:var(--ardoise);font-size:11.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .puce{width:4px;align-self:stretch;border-radius:3px;background:var(--trait)}
 
+/* ---------- traitements ---------- */
+.trt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--trait);border-radius:12px;background:var(--surface);margin-bottom:8px}
+.trt .coche{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--trait);flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+.trt.pris .coche{background:var(--indigo);border-color:var(--indigo)}
+.trt .coche svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.trt.pris .coche svg{opacity:1}
+.trt .infos{flex:1;min-width:0}
+.trt .infos b{display:block;font-size:13.5px;font-weight:600}
+.trt .infos small{color:var(--ardoise);font-size:11.5px}
+.trt.non-pris .infos{opacity:.45}
+.dose{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.dose button{width:30px;height:30px;border-radius:9px;border:1px solid var(--trait);background:var(--fond);font-size:17px;font-weight:600;line-height:1}
+.dose span{min-width:44px;text-align:center;font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:15px}
+.trt-fixe{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:14px}
+.trt-suppr{width:30px;height:30px;border-radius:9px;border:1px solid rgba(229,72,77,.35);color:var(--bas);background:var(--surface);font-size:16px;line-height:1;flex:0 0 auto}
+.trt-vide{font-size:13px;color:var(--ardoise);margin-bottom:10px}
+
 /* ---------- formulaires ---------- */
 label{display:block;font-size:12px;font-weight:600;color:var(--ardoise);margin:0 0 5px}
 input,select,textarea{
@@ -229,7 +246,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.8</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v6.9</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -322,6 +339,25 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
+      <div class="titre-bloc">Traitement habituel</div>
+      <div id="liste-traitements"></div>
+      <div class="champ"><label for="t-nom">Médicament ou insuline</label><input id="t-nom" placeholder="Ex. Metformine, Lantus"></div>
+      <div class="duo">
+        <div class="champ"><label for="t-dose">Dose</label><input id="t-dose" placeholder="Ex. 500 ou 14"></div>
+        <div class="champ"><label for="t-type">Type</label>
+          <select id="t-type">
+            <option value="med">Médicament</option>
+            <option value="rapide">Insuline rapide (U)</option>
+            <option value="lente">Insuline lente (U)</option>
+          </select>
+        </div>
+      </div>
+      <div class="champ"><label>Moments de prise</label><div class="puces" id="t-moments"></div></div>
+      <button class="gros" id="btn-traitement">Ajouter au traitement</button>
+      <div class="avis">Ces lignes sont proposées automatiquement à chaque mesure, selon l'heure. Les doses d'insuline restent ajustables par − et + au moment de la saisie.</div>
+    </div>
+
+    <div class="carte">
       <div class="titre-bloc">HbA1c de départ</div>
       <div class="duo">
         <div class="champ"><label for="s-hba1c">Valeur du laboratoire (%)</label><input type="number" step="0.1" inputmode="decimal" id="s-hba1c" placeholder="Ex. 7,4"></div>
@@ -343,7 +379,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.8 — 24/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 6.9 — 24/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -391,14 +427,11 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
       <input type="datetime-local" id="g-date">
       <div class="aide" id="contexte-auto"></div>
     </div>
-    <div class="duo">
-      <div class="champ"><label for="g-rapide">Insuline rapide (U)</label><input type="number" step="any" inputmode="decimal" id="g-rapide" placeholder="0"></div>
-      <div class="champ"><label for="g-lente">Insuline lente (U)</label><input type="number" step="any" inputmode="decimal" id="g-lente" placeholder="0"></div>
+    <div class="champ" id="bloc-traitements">
+      <label>Traitement pris</label>
+      <div id="g-traitements"></div>
     </div>
-    <div class="duo">
-      <div class="champ"><label for="g-glucides">Glucides du repas (g)</label><input type="number" step="any" inputmode="decimal" id="g-glucides" placeholder="0"></div>
-      <div class="champ"><label for="g-medic">Autre traitement pris</label><input id="g-medic" placeholder="Ex. metformine"></div>
-    </div>
+    <div class="champ"><label for="g-glucides">Glucides du repas (g)</label><input type="number" step="any" inputmode="decimal" id="g-glucides" placeholder="0"></div>
     <div class="champ"><label for="g-note">Note</label><input id="g-note" placeholder="Ex. repas tardif, stress, sport…"></div>
     <button type="submit" class="gros">Enregistrer la mesure</button>
     <button type="button" class="gros danger" id="g-supprimer" hidden>Supprimer cette mesure</button>
@@ -512,7 +545,7 @@ var Store = {
 
 /* ============ état ============ */
 var etat = {
-  reglages: { nom:"", unite:"mg", cibleBas:80, cibleHaut:150, hypo:70, hyper:250, hba1c:null, hba1cDate:null, naissance:"" },
+  reglages: { nom:"", unite:"mg", cibleBas:80, cibleHaut:150, hypo:70, hyper:250, hba1c:null, hba1cDate:null, naissance:"", traitements:[] },
   mesures: [],   // glycémies
   vitaux: [],    // poids / tension
   activites: [],
@@ -655,6 +688,11 @@ function rendreDerniere(){
   b.appendChild(el("div","quand", d.contexte + " · " + heure(d.ts) + " · " + depuis(d.ts)));
   var et = el("div","etat e-"+c); et.appendChild(el("i")); et.appendChild(document.createTextNode(LIBELLE[c]));
   b.appendChild(et);
+  if (d.traitements && d.traitements.length){
+    b.appendChild(el("div","quand", "Traitement pris : " + d.traitements.map(function(p){
+      return p.nom + " " + p.dose + (p.type === "med" ? "" : " U");
+    }).join(" · ")));
+  }
 
   // le couloir
   var min = Math.min(r.hypo*0.6, 40), max = Math.max(r.hyper*1.15, r.cibleHaut*1.6);
@@ -1070,8 +1108,11 @@ function ligneJournal(i){
     var d = el("div","d");
     d.appendChild(el("b", null, m.contexte));
     var bits = [];
-    if (m.rapide) bits.push(m.rapide + " U rapide");
-    if (m.lente) bits.push(m.lente + " U lente");
+    (m.traitements || []).forEach(function(p){
+      bits.push(p.nom + " " + p.dose + (p.type === "med" ? "" : " U"));
+    });
+    if (!m.traitements && m.rapide) bits.push(m.rapide + " U rapide");
+    if (!m.traitements && m.lente) bits.push(m.lente + " U lente");
     if (m.glucides) bits.push(m.glucides + " g glucides");
     if (m.medic) bits.push(m.medic);
     if (m.note) bits.push(m.note);
@@ -1130,11 +1171,9 @@ function ouvrirFeuille(onglet, mesure){
     $("#g-valeur").value = versAff(mesure.mg);
 
     $("#g-date").value = pourLocal(new Date(mesure.ts));
-    $("#g-rapide").value = mesure.rapide || "";
-    $("#g-lente").value = mesure.lente || "";
     $("#g-glucides").value = mesure.glucides || "";
-    $("#g-medic").value = mesure.medic || "";
     $("#g-note").value = mesure.note || "";
+    rendreTraitementsSaisie(mesure.traitements || []);
     $("#g-supprimer").hidden = false;
   } else {
     $("#f-glycemie").reset();
@@ -1173,7 +1212,10 @@ document.querySelectorAll(".onglets button").forEach(function(b){
 $("#fab").addEventListener("click", function(){ ouvrirFeuille("glycemie", null); });
 $("#voile").addEventListener("click", function(){ fermerFeuille(); });
 $("#fermer-feuille").addEventListener("click", function(){ fermerFeuille(); });
-$("#g-date").addEventListener("change", majContexteAuto);
+$("#g-date").addEventListener("change", function(){
+  majContexteAuto();
+  if (!editionId) rendreTraitementsSaisie(null);
+});
 
 $("#f-glycemie").addEventListener("submit", function(e){
   e.preventDefault();
@@ -1186,12 +1228,18 @@ $("#f-glycemie").addEventListener("submit", function(e){
     ts: $("#g-date").value ? new Date($("#g-date").value).getTime() : Date.now(),
     mg: mg,
     contexte: contexteAuto($("#g-date").value ? new Date($("#g-date").value).getTime() : Date.now()),
-    rapide: num($("#g-rapide").value) || 0,
-    lente: num($("#g-lente").value) || 0,
+    rapide: 0,
+    lente: 0,
+    traitements: [],
     glucides: num($("#g-glucides").value) || 0,
-    medic: $("#g-medic").value.trim(),
     note: $("#g-note").value.trim()
   };
+  traitementsSaisie.filter(function(p){ return p.pris; }).forEach(function(p){
+    obj.traitements.push({ nom:p.nom, dose:p.dose, type:p.type });
+    if (p.type === "rapide") obj.rapide += (num(p.dose) || 0);
+    if (p.type === "lente")  obj.lente  += (num(p.dose) || 0);
+  });
+
   if (editionId) etat.mesures = etat.mesures.filter(function(m){ return m.id !== editionId; });
   etat.mesures.push(obj);
   sauver(); fermerFeuille(); rendreSuivi(); rendreJournal(); rafraichirRapport();
@@ -1231,6 +1279,184 @@ $("#f-activite").addEventListener("submit", function(e){
   etat.activites.push(o); sauver(); this.reset(); fermerFeuille(); rendreJournal(); toast("Activité enregistrée");
 });
 
+/* ============ traitements ============ */
+var MOMENTS = [
+  { cle:"matin",   nom:"Matin",   a:4,  b:11 },
+  { cle:"midi",    nom:"Midi",    a:11, b:16 },
+  { cle:"soir",    nom:"Soir",    a:16, b:21 },
+  { cle:"coucher", nom:"Coucher", a:21, b:4 },
+  { cle:"chaque",  nom:"Chaque mesure" }
+];
+var momentsChoisis = ["matin"];
+var traitementsSaisie = [];
+
+function momentDeLHeure(ts){
+  var heure = new Date(ts).getHours();
+  for (var i=0; i<MOMENTS.length; i++){
+    var m = MOMENTS[i];
+    if (m.a === undefined) continue;
+    if (m.a < m.b ? (heure >= m.a && heure < m.b) : (heure >= m.a || heure < m.b)) return m.cle;
+  }
+  return "matin";
+}
+function nomMoment(cle){
+  for (var i=0; i<MOMENTS.length; i++) if (MOMENTS[i].cle === cle) return MOMENTS[i].nom;
+  return cle;
+}
+function uniteTrt(t){ return t.type === "med" ? (t.unite || "") : "U"; }
+function libelleTrt(t){
+  return t.nom + " " + t.dose + (uniteTrt(t) ? " " + uniteTrt(t) : "");
+}
+function resumeTraitement(){
+  return etat.reglages.traitements.map(function(t){
+    return libelleTrt(t) + " (" + t.moments.map(nomMoment).join(", ").toLowerCase() + ")";
+  });
+}
+
+function rendreMoments(){
+  var c = $("#t-moments"); c.innerHTML = "";
+  MOMENTS.forEach(function(m){
+    var b = el("button", momentsChoisis.indexOf(m.cle) !== -1 ? "actif" : null, m.nom);
+    b.type = "button";
+    b.addEventListener("click", function(){
+      if (m.cle === "chaque"){ momentsChoisis = ["chaque"]; }
+      else {
+        momentsChoisis = momentsChoisis.filter(function(x){ return x !== "chaque"; });
+        var i = momentsChoisis.indexOf(m.cle);
+        if (i === -1) momentsChoisis.push(m.cle); else momentsChoisis.splice(i,1);
+      }
+      rendreMoments();
+    });
+    c.appendChild(b);
+  });
+}
+
+function rendreListeTraitements(){
+  var c = $("#liste-traitements"); c.innerHTML = "";
+  var l = etat.reglages.traitements;
+  if (!l.length){
+    c.appendChild(el("div","trt-vide","Aucun traitement enregistré pour l'instant."));
+    return;
+  }
+  l.forEach(function(t){
+    var d = el("div","trt");
+    var infos = el("div","infos");
+    infos.appendChild(el("b", null, t.nom));
+    infos.appendChild(el("small", null, t.dose + (uniteTrt(t) ? " " + uniteTrt(t) : "") +
+      " · " + t.moments.map(nomMoment).join(", ")));
+    d.appendChild(infos);
+    var sup = el("button","trt-suppr","×");
+    sup.type = "button";
+    sup.addEventListener("click", function(){
+      if (!confirm("Retirer " + t.nom + " du traitement ?")) return;
+      etat.reglages.traitements = etat.reglages.traitements.filter(function(x){ return x.id !== t.id; });
+      sauver(); rendreListeTraitements(); rafraichirRapport();
+    });
+    d.appendChild(sup);
+    c.appendChild(d);
+  });
+}
+
+$("#t-type").addEventListener("change", function(){
+  $("#t-dose").placeholder = this.value === "med" ? "Ex. 500 mg" : "Ex. 14";
+});
+
+$("#btn-traitement").addEventListener("click", function(){
+  var nom = $("#t-nom").value.trim(), dose = $("#t-dose").value.trim(), type = $("#t-type").value;
+  if (!nom){ toast("Indiquez le nom du médicament."); return; }
+  if (!dose){ toast("Indiquez la dose."); return; }
+  if (!momentsChoisis.length){ toast("Choisissez au moins un moment de prise."); return; }
+  if (type !== "med" && num(dose) === null){ toast("La dose d'insuline doit être un nombre d'unités."); return; }
+  var t = { id:id(), nom:nom, type:type, moments:momentsChoisis.slice() };
+  if (type === "med"){
+    var n = num(dose);
+    t.dose = n !== null ? n : dose;
+    t.unite = n !== null ? "" : "";
+    if (n !== null){ t.dose = dose; }  // on conserve la saisie telle quelle (ex. « 500 mg »)
+  } else {
+    t.dose = num(dose);
+  }
+  etat.reglages.traitements.push(t);
+  sauver();
+  $("#t-nom").value = ""; $("#t-dose").value = "";
+  momentsChoisis = ["matin"]; rendreMoments();
+  rendreListeTraitements(); rafraichirRapport();
+  toast("Traitement ajouté");
+});
+
+// lignes proposées à la saisie, selon l'heure de la mesure
+function rendreTraitementsSaisie(prises){
+  var ts = $("#g-date").value ? new Date($("#g-date").value).getTime() : Date.now();
+  if (isNaN(ts)) ts = Date.now();
+  var moment = momentDeLHeure(ts);
+  var c = $("#g-traitements"); c.innerHTML = "";
+
+  var candidats = etat.reglages.traitements.filter(function(t){
+    return t.moments.indexOf("chaque") !== -1 || t.moments.indexOf(moment) !== -1;
+  });
+
+  if (prises){
+    // en modification : on repart de ce qui avait été enregistré
+    traitementsSaisie = prises.map(function(p){ return { nom:p.nom, dose:p.dose, type:p.type, pris:true }; });
+    candidats.forEach(function(t){
+      var dejaLa = traitementsSaisie.some(function(p){ return p.nom === t.nom; });
+      if (!dejaLa) traitementsSaisie.push({ nom:t.nom, dose:t.dose, type:t.type, pris:false });
+    });
+  } else {
+    traitementsSaisie = candidats.map(function(t){
+      return { nom:t.nom, dose:t.dose, type:t.type, pris:true };
+    });
+  }
+
+  if (!traitementsSaisie.length){
+    $("#bloc-traitements").hidden = etat.reglages.traitements.length === 0;
+    if (!etat.reglages.traitements.length) return;
+    c.appendChild(el("div","trt-vide","Aucun traitement prévu à cette heure."));
+    return;
+  }
+  $("#bloc-traitements").hidden = false;
+
+  traitementsSaisie.forEach(function(p){
+    var d = el("div","trt" + (p.pris ? " pris" : " non-pris"));
+    var coche = el("div","coche");
+    coche.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+    d.appendChild(coche);
+
+    var infos = el("div","infos");
+    infos.appendChild(el("b", null, p.nom));
+    infos.appendChild(el("small", null, p.type === "med" ? "médicament" : (p.type === "rapide" ? "insuline rapide" : "insuline lente")));
+    d.appendChild(infos);
+
+    if (p.type === "med"){
+      d.appendChild(el("div","trt-fixe", String(p.dose)));
+    } else {
+      var boite = el("div","dose");
+      var moins = el("button", null, "−"); moins.type = "button";
+      var val = el("span", null, p.dose + " U");
+      var plus = el("button", null, "+"); plus.type = "button";
+      moins.addEventListener("click", function(e){
+        e.stopPropagation();
+        p.dose = Math.max(0, Math.round((p.dose - 1)*10)/10);
+        val.textContent = p.dose + " U";
+      });
+      plus.addEventListener("click", function(e){
+        e.stopPropagation();
+        p.dose = Math.round((p.dose + 1)*10)/10;
+        val.textContent = p.dose + " U";
+      });
+      boite.appendChild(moins); boite.appendChild(val); boite.appendChild(plus);
+      d.appendChild(boite);
+    }
+
+    d.addEventListener("click", function(){
+      p.pris = !p.pris;
+      d.classList.toggle("pris", p.pris);
+      d.classList.toggle("non-pris", !p.pris);
+    });
+    c.appendChild(d);
+  });
+}
+
 /* ============ saisie de la glycémie ============ */
 function majUniteSaisie(){
   $("#g-unite").textContent = "(" + unite() + ")";
@@ -1267,6 +1493,7 @@ function remplirReglages(){
   $("#s-hypo").value = versAff(r.hypo);
   $("#s-hyper").value = versAff(r.hyper);
   $("#s-naissance").value = naissanceFR(r.naissance);
+  rendreListeTraitements();
   $("#s-hba1c").value = (typeof r.hba1c === "number") ? r.hba1c : "";
   $("#s-hba1c-date").value = r.hba1cDate || "";
   $("#entete-sous").textContent = r.nom ? "Carnet de " + r.nom : "Diabète — glycémies, traitement et rapport médical";
@@ -1401,6 +1628,7 @@ function rendreRapport(){
   tr("Cible retenue", affiche(etat.reglages.cibleBas) + "–" + affiche(etat.reglages.cibleHaut) + " " + unite());
   tr("Mesures par jour relevé", (l.length/jours).toFixed(1).replace(".",","));
   if (uni) tr("Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".",",") + " U");
+  resumeTraitement().forEach(function(txt, i){ tr(i === 0 ? "Traitement habituel" : "", txt); });
   e.appendChild(tb);
   c.appendChild(e);
 
@@ -1615,6 +1843,7 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
     ["Mesures par jour relevé", (l.length/joursReleves).toFixed(1).replace(".", ",")]
   ];
   if (uni) lignes.push(["Insuline totale notée", (Math.round(uni*10)/10).toString().replace(".", ",") + " U"]);
+  resumeTraitement().forEach(function(txt, i){ lignes.push([i === 0 ? "Traitement habituel" : "", txt]); });
 
   // hauteurs des trois cartes
   var hSynthese = P + 17 + 13 + 10 + lignes.length*17 + P - 4;
@@ -1640,8 +1869,9 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
           X0 + P, cy, 8.5, false, ARDOISE);
   cy -= 14;
   lignes.forEach(function(ln, i){
+    var taille = pdfLargeur(ln[1], 9.75) > W - 2*P - 150 ? 8 : 9.75;
     t.texte(ln[0], X0 + P, cy - 10, 9.75, false, ENCRE);
-    t.texte(ln[1], X1 - P, cy - 10, 9.75, true, ENCRE, "droite");
+    t.texte(ln[1], X1 - P, cy - 10, taille, true, ENCRE, "droite");
     cy -= 17;
     if (i < lignes.length - 1){
       t.couleur(TRAIT, true).ligne(X0 + P, cy - 3, X1 - P, cy - 3, 0.5);
@@ -1807,6 +2037,7 @@ Store.load().then(function(d){
   }
   appliquerPeriodeRapport(90);
   remplirReglages();
+  rendreMoments();
   majSauvegarde();
   majUniteSaisie();
   rendreSuivi();
