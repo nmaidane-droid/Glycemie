@@ -255,7 +255,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.3</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.6</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -392,8 +392,9 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.3 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.6 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
+        <button class="gros secondaire" id="btn-notice" style="margin-bottom:14px">Télécharger le mode d'emploi</button>
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
         avec cétones, appliquez le protocole donné par votre équipe soignante et contactez-la.
@@ -1854,6 +1855,8 @@ function pdfLatin(s){
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/\u2026/g, "...")
     .replace(/\u2265/g, ">=")
+    .replace(/\u2212/g, "-")
+    .replace(/\u2192/g, "->")
     .replace(/\u2264/g, "<=")
     .replace(/[^\x00-\xFF]/g, "?");
 }
@@ -1944,16 +1947,24 @@ Toile.prototype.texte = function(txt, x, y, taille, gras, hex, align){
 };
 Toile.prototype.flux = function(){ return this.ops.join("\n"); };
 
-function assemblerPDF(contenu, titre){
-  var objets = [];
+function assemblerPDF(pages, titre){
+  if (typeof pages === "string") pages = [pages];
+  var objets = [], n = pages.length;
+  var idsPages = [];
+  for (var p = 0; p < n; p++) idsPages.push((3 + p*2) + " 0 R");
+  var idPolice1 = 3 + n*2, idPolice2 = idPolice1 + 1, idInfo = idPolice2 + 1;
+
   objets[1] = "<< /Type /Catalog /Pages 2 0 R >>";
-  objets[2] = "<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
-  objets[3] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+PAGE_L.toFixed(2)+" "+PAGE_H.toFixed(2)+"] " +
-              "/Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>";
-  objets[4] = "<< /Length "+contenu.length+" >>\nstream\n"+contenu+"\nendstream";
-  objets[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
-  objets[6] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
-  objets[7] = "<< /Title ("+pdfEchappe(titre)+") /Producer (Glycemie - carnet de suivi) >>";
+  objets[2] = "<< /Type /Pages /Kids [" + idsPages.join(" ") + "] /Count " + n + " >>";
+  for (var q = 0; q < n; q++){
+    var idPage = 3 + q*2, idFlux = idPage + 1;
+    objets[idPage] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+PAGE_L.toFixed(2)+" "+PAGE_H.toFixed(2)+"] " +
+      "/Resources << /Font << /F1 "+idPolice1+" 0 R /F2 "+idPolice2+" 0 R >> >> /Contents "+idFlux+" 0 R >>";
+    objets[idFlux] = "<< /Length "+pages[q].length+" >>\nstream\n"+pages[q]+"\nendstream";
+  }
+  objets[idPolice1] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objets[idPolice2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+  objets[idInfo] = "<< /Title ("+pdfEchappe(titre)+") /Producer (Glycemie - carnet de suivi) >>";
 
   var out = "%PDF-1.4\n", offsets = [];
   for (var i=1; i<objets.length; i++){
@@ -1965,7 +1976,7 @@ function assemblerPDF(contenu, titre){
   for (var j=1; j<objets.length; j++){
     out += ("0000000000"+offsets[j]).slice(-10)+" 00000 n \n";
   }
-  out += "trailer\n<< /Size "+objets.length+" /Root 1 0 R /Info 7 0 R >>\nstartxref\n"+debutXref+"\n%%EOF";
+  out += "trailer\n<< /Size "+objets.length+" /Root 1 0 R /Info "+idInfo+" 0 R >>\nstartxref\n"+debutXref+"\n%%EOF";
 
   var bytes = new Uint8Array(out.length);
   for (var k=0; k<out.length; k++) bytes[k] = out.charCodeAt(k) & 0xFF;
@@ -2182,6 +2193,11 @@ function envoyerRapport(){
   }
 }
 $("#btn-envoyer").addEventListener("click", envoyerRapport);
+
+$("#btn-notice").addEventListener("click", function(){
+  // le guide illustré est livré avec l'application et mis en cache pour l'usage hors ligne
+  window.open("glycemie-mode-emploi.pdf", "_blank");
+});
 
 /* ============ démarrage ============ */
 function sauver(){

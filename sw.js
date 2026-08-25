@@ -1,6 +1,6 @@
-const CACHE = 'glycemie-v4';
+const CACHE = 'glycemie-v5';
 const FICHIERS = ['./', './index.html', './manifest.json',
-  './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png'];
+  './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png', './glycemie-mode-emploi.pdf'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
