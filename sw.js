@@ -1,4 +1,4 @@
-const CACHE = 'glycemie-v5';
+const CACHE = 'glycemie-v6';
 const FICHIERS = ['./', './index.html', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png', './glycemie-mode-emploi.pdf'];
 
@@ -17,8 +17,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
+  // la page et le mode d'emploi passent par le réseau d'abord :
+  // une mise en ligne est ainsi visible dès le rechargement
   const estPage = e.request.mode === 'navigate' ||
-    (e.request.headers.get('accept') || '').indexOf('text/html') !== -1;
+    (e.request.headers.get('accept') || '').indexOf('text/html') !== -1 ||
+    e.request.url.indexOf('.pdf') !== -1;
 
   if (estPage) {
     // la page passe toujours par le réseau d'abord : une mise en ligne est visible au rechargement
