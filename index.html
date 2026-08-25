@@ -250,7 +250,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.6</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.7</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -385,7 +385,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.6 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.7 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1344,6 +1344,16 @@ function resumeTraitement(){
   });
 }
 
+function moyennesParMoment(l){
+  return MOMENTS.filter(function(mo){ return mo.a !== undefined; }).map(function(mo){
+    var s = l.filter(function(m){
+      var h = new Date(m.ts).getHours();
+      return mo.a < mo.b ? (h >= mo.a && h < mo.b) : (h >= mo.a || h < mo.b);
+    });
+    return { nom:mo.nom, n:s.length, moy: s.length ? moyenne(s) : null };
+  });
+}
+
 function rendreMoments(){
   var c = $("#t-moments"); c.innerHTML = "";
   MOMENTS.forEach(function(m){
@@ -1687,6 +1697,35 @@ function rendreRapport(){
   rep.appendChild(boiteZones);
   c.appendChild(rep);
 
+  // moyennes par moment de la journée, en colonnes
+  var parMoment = moyennesParMoment(l);
+  var cm = el("div","carte");
+  cm.appendChild(el("div","titre-bloc","Glycémies moyennes de la journée"));
+  cm.appendChild(el("div","quand", "Moyenne de chaque moment sur " + pluriel(joursFenetre, "jour")));
+  var colsM = el("div","colonnes"), zonesM = el("div","zones");
+  var valsM = parMoment.map(function(p){ return p.moy || 0; });
+  var plafondM = Math.max.apply(null, valsM.concat([etat.reglages.cibleHaut])) * 1.12;
+  parMoment.forEach(function(p){
+    var col = el("div","col");
+    if (p.moy !== null){
+      var coul = COULEUR[classe(p.moy)];
+      col.appendChild(el("div","v", affiche(p.moy))).style.color = coul;
+      var barre = el("div","barre");
+      barre.style.height = Math.max(6, (p.moy/plafondM)*118) + "px";
+      barre.style.background = coul;
+      col.appendChild(barre);
+    } else {
+      col.appendChild(el("div","v","—")).style.color = "var(--trait)";
+      col.appendChild(el("div","vide-col"));
+    }
+    colsM.appendChild(col);
+    var z = el("div");
+    z.appendChild(el("b", null, p.nom));
+    zonesM.appendChild(z);
+  });
+  cm.appendChild(colsM); cm.appendChild(zonesM);
+  c.appendChild(cm);
+
   var jourMoy = moyennesJournalieres(l);
   if (jourMoy.length >= 1){
     var gr = el("div","carte");
@@ -1897,7 +1936,8 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   lignes.forEach(function(ln){ hLignes += (ln[2] === "trt") ? 15 : 17; });
   var hSynthese = P + 17 + 13 + 10 + hLignes + P - 4;
   var hRepart   = P + 11 + 8 + 13 + 104 + 44 + P;
-  var hCourbe   = 281;
+  var hMoments  = P + 11 + 8 + 13 + 78 + 28 + P;
+  var hCourbe   = 196;
 
   // fond de page
   t.couleur(FOND).rect(0, 0, PAGE_L, PAGE_H);
@@ -1961,7 +2001,35 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   });
   y = haut2 - hRepart - ECART;
 
-  /* ---------- carte 3 : courbe ---------- */
+  /* ---------- carte 3 : moyennes par moment ---------- */
+  var parMoment = moyennesParMoment(l);
+  var haut3b = y;
+  t.couleur(CARTE); t.couleur(BORD, true);
+  t.rectArrondi(X0, haut3b - hMoments, W, hMoments, RAYON, true, true);
+  cy = haut3b - P - 8;
+  t.texteEspace("GLYCÉMIES MOYENNES DE LA JOURNÉE", X0 + P, cy, 8.25, true, ARDOISE, 1.05);
+  cy -= 13;
+  t.texte("Moyenne de chaque moment sur " + pluriel(joursFenetre, "jour"), X0 + P, cy, 9, false, ARDOISE);
+  cy -= 16;
+
+  var nbm = parMoment.length, gapM = 9;
+  var largM = (W - 2*P - gapM*(nbm-1))/nbm;
+  var hautM = 78, basM = cy - hautM - 20;
+  var valsM = parMoment.map(function(p){ return p.moy || 0; });
+  var plafondM = Math.max.apply(null, valsM.concat([r.cibleHaut])) * 1.12;
+  parMoment.forEach(function(p, i){
+    var x = X0 + P + i*(largM + gapM);
+    var coul = p.moy !== null ? COULEUR[classe(p.moy)] : "#E4E7EF";
+    var hb = p.moy !== null ? Math.max(3, (p.moy/plafondM)*hautM) : 2;
+    t.couleur(coul);
+    t.rectArrondi(x, basM + 20, largM, hb, 3.2, true, false);
+    t.texte(p.moy !== null ? affiche(p.moy) : "—", x + largM/2, basM + 24 + hb, 9.4, true,
+            p.moy !== null ? coul : ARDOISE, "centre");
+    t.texte(p.nom, x + largM/2, basM + 7, 9, true, ENCRE, "centre");
+  });
+  y = haut3b - hMoments - ECART;
+
+  /* ---------- carte 4 : courbe ---------- */
   var haut3 = y;
   t.couleur(CARTE); t.couleur(BORD, true);
   t.rectArrondi(X0, haut3 - hCourbe, W, hCourbe, RAYON, true, true);
@@ -1969,7 +2037,7 @@ function construireRapportPDF(l, debutFenetre, finFenetre){
   t.texteEspace(("Glycémie moyenne sur " + pluriel(joursFenetre, "jour")).toUpperCase(), X0 + P, cy, 8.25, true, ARDOISE, 1.05);
   cy -= 14;
 
-  var gG = X0 + P + 26, gD = X1 - P, gH = 200, gB = cy - gH;
+  var gG = X0 + P + 26, gD = X1 - P, gH = 118, gB = cy - gH;
   var vals = pts.map(function(p){ return p.mg; });
   var vmin = Math.min.apply(null, vals.concat([r.cibleBas])) * 0.85;
   var vmax = Math.max.apply(null, vals.concat([r.cibleHaut])) * 1.12;
