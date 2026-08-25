@@ -153,6 +153,10 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 .dose button{width:30px;height:30px;border-radius:9px;border:1px solid var(--trait);background:var(--fond);font-size:17px;font-weight:600;line-height:1}
 .dose span{min-width:44px;text-align:center;font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:15px}
 .trt-fixe{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:14px}
+.trt.en-edition{border-color:var(--indigo);background:rgba(61,59,209,.04)}
+.trt-mod{width:30px;height:30px;border-radius:9px;border:1px solid var(--trait);background:var(--surface);flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center}
+.trt-mod svg{width:15px;height:15px;stroke:var(--indigo);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .trt-suppr{width:30px;height:30px;border-radius:9px;border:1px solid rgba(229,72,77,.35);color:var(--bas);background:var(--surface);font-size:16px;line-height:1;flex:0 0 auto}
 .trt-vide{font-size:13px;color:var(--ardoise);margin-bottom:10px}
 
@@ -250,7 +254,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
 <body>
 
 <header>
-  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v7.9</span></div>
+  <div class="marque"><h1>Glycémie</h1><span>carnet de suivi · v8.0</span></div>
   <div class="sous" id="entete-sous">Diabète — glycémies, traitement et rapport médical</div>
 </header>
 
@@ -361,6 +365,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
       </div>
       <div class="champ"><label>Moments de prise</label><div class="puces" id="t-moments"></div></div>
       <button class="gros" id="btn-traitement">Ajouter au traitement</button>
+      <button class="gros secondaire" id="btn-annuler-trt" hidden>Annuler la modification</button>
       <div class="avis">Ces lignes sont proposées automatiquement à chaque mesure, selon l'heure. Les doses d'insuline restent ajustables par − et + au moment de la saisie.</div>
     </div>
 
@@ -386,7 +391,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ardo
     </div>
 
     <div class="carte">
-      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 7.9 — 25/08/2026</span></div>
+      <div class="titre-bloc">À propos <span style="float:right;letter-spacing:0;text-transform:none">Version 8.0 — 25/08/2026</span></div>
       <p style="margin:0;font-size:13.5px;color:var(--ardoise)">
         Glycémie est un carnet de suivi. Il n'établit aucun diagnostic, ne propose aucune dose d'insuline
         et ne remplace pas votre médecin. En cas d'hypoglycémie, de malaise ou de glycémie très élevée
@@ -1359,6 +1364,32 @@ function rendreMoments(){
   });
 }
 
+var trtEnEdition = null;
+
+function editerTraitement(t){
+  trtEnEdition = t.id;
+  $("#t-nom").value = t.nom;
+  $("#t-dose").value = t.dose;
+  $("#t-type").value = t.type;
+  momentsChoisis = t.moments.slice();
+  rendreMoments();
+  $("#btn-traitement").textContent = "Enregistrer les modifications";
+  $("#btn-annuler-trt").hidden = false;
+  rendreListeTraitements();
+  $("#t-nom").focus();
+}
+
+function annulerEditionTraitement(){
+  trtEnEdition = null;
+  $("#t-nom").value = ""; $("#t-dose").value = "";
+  $("#t-type").value = "med";
+  momentsChoisis = ["matin"];
+  rendreMoments();
+  $("#btn-traitement").textContent = "Ajouter au traitement";
+  $("#btn-annuler-trt").hidden = true;
+  rendreListeTraitements();
+}
+
 function rendreListeTraitements(){
   var c = $("#liste-traitements"); c.innerHTML = "";
   var l = etat.reglages.traitements;
@@ -1367,17 +1398,25 @@ function rendreListeTraitements(){
     return;
   }
   l.forEach(function(t){
-    var d = el("div","trt");
+    var d = el("div","trt" + (t.id === trtEnEdition ? " en-edition" : ""));
     var infos = el("div","infos");
     infos.appendChild(el("b", null, t.nom));
     infos.appendChild(el("small", null, t.dose + (uniteTrt(t) ? " " + uniteTrt(t) : "") +
       " · " + t.moments.map(nomMoment).join(", ")));
     d.appendChild(infos);
+
+    var mod = el("button","trt-mod");
+    mod.type = "button";
+    mod.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+    mod.addEventListener("click", function(){ editerTraitement(t); });
+    d.appendChild(mod);
+
     var sup = el("button","trt-suppr","×");
     sup.type = "button";
     sup.addEventListener("click", function(){
       if (!confirm("Retirer " + t.nom + " du traitement ?")) return;
       etat.reglages.traitements = etat.reglages.traitements.filter(function(x){ return x.id !== t.id; });
+      if (trtEnEdition === t.id) annulerEditionTraitement();
       sauver(); rendreListeTraitements(); rafraichirRapport();
     });
     d.appendChild(sup);
@@ -1388,6 +1427,8 @@ function rendreListeTraitements(){
 $("#t-type").addEventListener("change", function(){
   $("#t-dose").placeholder = this.value === "med" ? "Ex. 500 mg" : "Ex. 14";
 });
+
+$("#btn-annuler-trt").addEventListener("click", annulerEditionTraitement);
 
 $("#btn-traitement").addEventListener("click", function(){
   var nom = $("#t-nom").value.trim(), dose = $("#t-dose").value.trim(), type = $("#t-type").value;
@@ -1404,11 +1445,18 @@ $("#btn-traitement").addEventListener("click", function(){
   } else {
     t.dose = num(dose);
   }
+  if (trtEnEdition){
+    var i = -1;
+    etat.reglages.traitements.forEach(function(x, k){ if (x.id === trtEnEdition) i = k; });
+    if (i !== -1){ t.id = trtEnEdition; etat.reglages.traitements[i] = t; }
+    sauver(); annulerEditionTraitement(); rafraichirRapport();
+    toast("Traitement modifié");
+    return;
+  }
   etat.reglages.traitements.push(t);
   sauver();
-  $("#t-nom").value = ""; $("#t-dose").value = "";
-  momentsChoisis = ["matin"]; rendreMoments();
-  rendreListeTraitements(); rafraichirRapport();
+  annulerEditionTraitement();
+  rafraichirRapport();
   toast("Traitement ajouté");
 });
 
